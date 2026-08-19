@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medical Records</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩺</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────
+   THEME · "the family health file"
+   red is reserved for allergies only,
+   mono type marks clinical data (dates, doses)
+   ───────────────────────────────────────────── */
+:root{
+  --paper:      #F2F5F3;
+  --card:       #FFFFFF;
+  --ink:        #1C2B27;
+  --muted:      #5F6F69;
+  --line:       #D8E0DB;
+  --green:      #177E63;
+  --green-wash: #E3F1EB;
+  --red:        #C03A2B;
+  --red-wash:   #FAEBE8;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:15.5px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:960px; margin:0 auto; padding:36px 20px 90px}
+a{color:var(--green)}
+:focus-visible{outline:2px solid var(--green); outline-offset:2px; border-radius:4px}
+
+/* ── patient header, styled like a record card ── */
+.eyebrow{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--green); margin-bottom:6px;
+}
+.patient-card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:26px 28px 6px; margin-bottom:18px;
+  box-shadow:0 1px 2px rgba(28,43,39,.05);
+}
+.patient-top{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap}
+h1{
+  font-family:var(--display); font-weight:800; font-size:clamp(30px,5.5vw,44px);
+  line-height:1.05; margin:0 0 4px; letter-spacing:-.01em;
+}
+.header-actions{display:flex; gap:8px; flex-wrap:wrap}
+.ruled{margin-top:18px}
+.ruled-row{
+  display:flex; justify-content:space-between; align-items:baseline; gap:16px;
+  padding:11px 2px; border-top:1px solid var(--line);
+}
+.ruled-row .k{font-size:13px; color:var(--muted)}
+.ruled-row .v{font-family:var(--mono); font-size:14px; font-weight:500; text-align:right}
+
+/* ── info cards ── */
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin:18px 0 8px}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:18px 20px; box-shadow:0 1px 2px rgba(28,43,39,.05);
+}
+.card h2{
+  font-family:var(--display); font-weight:700; font-size:16px;
+  margin:0 0 10px; display:flex; align-items:center; gap:8px;
+}
+.card ul{margin:0; padding-left:18px}
+.card li{margin:5px 0}
+.card .none{color:var(--muted); font-size:14px}
+.card.allergy{background:var(--red-wash); border-color:#EDCFC9}
+.card.allergy h2{color:var(--red)}
+.med-dose{font-family:var(--mono); font-size:13px; color:var(--muted); display:block}
+.contact{margin:8px 0; font-size:14.5px}
+.contact .who{font-weight:600}
+.contact a{font-family:var(--mono); font-size:13.5px; text-decoration:none}
+.notes-card p{margin:0; font-size:14.5px}
+
+/* ── record folders (history + therapy logs) ── */
+.records-head{margin:34px 0 0}
+.records-head h2{
+  font-family:var(--display); font-weight:800; font-size:26px; margin:0 0 2px;
+}
+.records-head .sub{color:var(--muted); font-size:14px; margin:0 0 14px}
+.tabs{display:flex; gap:6px; flex-wrap:wrap; padding:0 6px; position:relative; z-index:1}
+.tab{
+  font-family:var(--body); font-size:13px; cursor:pointer;
+  background:#E9EEEB; color:var(--ink); border:1px solid var(--line); border-bottom:none;
+  border-radius:10px 10px 0 0; padding:8px 14px 10px;
+  transform:translateY(1px); transition:background .15s;
+}
+.tab:hover{background:#F3F6F4}
+.tab.active{background:var(--card); font-weight:600; color:var(--green)}
+.tab .n{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:4px}
+.folder{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:18px 20px 24px; box-shadow:0 1px 2px rgba(28,43,39,.05);
+}
+.search{
+  width:100%; padding:11px 14px; font-size:14.5px; font-family:var(--body);
+  border:1px solid var(--line); border-radius:10px; background:var(--paper);
+  color:var(--ink); margin-bottom:6px;
+}
+.search::placeholder{color:var(--muted)}
+.yearhead{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; color:var(--muted);
+  display:flex; align-items:center; gap:12px; margin:22px 0 10px;
+}
+.yearhead::after{content:""; flex:1; height:1px; background:var(--line)}
+.rec{
+  border:1px solid var(--line); border-radius:12px; padding:15px 16px; margin:10px 0;
+  background:#FDFEFD; transition:box-shadow .15s, transform .15s;
+}
+.rec:hover{box-shadow:0 3px 10px rgba(28,43,39,.07); transform:translateY(-1px)}
+.rec-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px}
+.badge{
+  font-size:11.5px; font-weight:600; letter-spacing:.02em;
+  padding:3px 10px; border-radius:999px; background:var(--green-wash); color:var(--green);
+}
+/* medical history categories */
+.badge.b-vaccination{background:#E3F1EB; color:#177E63}
+.badge.b-visit{background:#E7EDF8; color:#2B4C8C}
+.badge.b-neuro{background:#F7E7EF; color:#8C2B5A}
+.badge.b-assessment{background:#E2F1F5; color:#0E7490}
+.badge.b-lab{background:#F6EEDD; color:#8A6414}
+.badge.b-prescription{background:#EFE9F7; color:#5B3E9E}
+.badge.b-hospital{background:#F8E9E6; color:#A44334}
+.badge.b-other{background:#ECEFEE; color:#5F6F69}
+/* therapy types */
+.badge.t-speech{background:#E3F1EB; color:#177E63}
+.badge.t-ot{background:#F6EEDD; color:#9A5B13}
+.badge.t-physio{background:#E7EDF8; color:#2B4C8C}
+.badge.t-behavioural{background:#EFE9F7; color:#7A3E9D}
+.badge.t-sped{background:#EDF2E2; color:#4D6A1F}
+.badge.t-other{background:#ECEFEE; color:#5F6F69}
+.rec-date{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+.rec h3{font-family:var(--display); font-weight:700; font-size:17px; margin:2px 0 3px}
+.rec .by{font-size:13px; color:var(--muted); margin:0 0 7px}
+.rec .sum{font-size:14.5px; margin:0 0 12px}
+.rec-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.btn{
+  font-family:var(--body); font-size:13.5px; font-weight:600; cursor:pointer;
+  border-radius:9px; padding:8px 14px; border:1px solid transparent;
+  text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+  transition:filter .15s;
+}
+.btn:hover{filter:brightness(.96)}
+.btn-primary{background:var(--green); color:#fff}
+.btn-ghost{background:#fff; color:var(--ink); border-color:var(--line)}
+.btn-sm{padding:5px 11px; font-size:12.5px}
+.nolink{font-size:13px; color:var(--muted); font-style:italic}
+.empty{
+  text-align:center; color:var(--muted); padding:34px 14px; font-size:14.5px;
+}
+.empty b{color:var(--ink)}
+
+/* ── daily therapy log rows ── */
+.log{
+  border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:9px 0;
+  background:#FDFEFD;
+}
+.log-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.log .meta{font-size:12.5px; color:var(--muted)}
+.log .focus{font-size:14px; margin:7px 0 0}
+.log .prog{
+  font-size:13.5px; color:var(--green); margin:6px 0 0;
+  padding-left:10px; border-left:3px solid var(--green-wash);
+}
+.log-actions{margin-top:9px; display:flex; gap:8px; flex-wrap:wrap}
+
+/* ── how-to & footer ── */
+details.howto{
+  margin-top:26px; background:var(--green-wash); border:1px solid #CBE4DA;
+  border-radius:16px; padding:16px 20px;
+}
+details.howto summary{
+  font-family:var(--display); font-weight:700; font-size:16px; cursor:pointer;
+  color:var(--green);
+}
+details.howto ol{padding-left:20px}
+details.howto li{margin:9px 0; font-size:14.5px}
+details.howto code{
+  font-family:var(--mono); font-size:12.5px; background:#fff;
+  border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+}
+footer{
+  margin-top:30px; padding-top:16px; border-top:1px solid var(--line);
+  font-size:13px; color:var(--muted); display:flex; justify-content:space-between;
+  gap:14px; flex-wrap:wrap;
+}
+
+/* ── pdf modal ── */
+.overlay{
+  position:fixed; inset:0; background:rgba(20,30,27,.6); z-index:50;
+  display:none; align-items:center; justify-content:center; padding:14px;
+}
+.overlay.open{display:flex; animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  background:#fff; border-radius:16px; width:min(920px,100%); height:min(86vh,900px);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sheet-head{
+  display:flex; align-items:center; gap:10px; padding:12px 16px;
+  border-bottom:1px solid var(--line);
+}
+.sheet-head .t{font-family:var(--display); font-weight:700; font-size:15px; flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.sheet iframe{flex:1; border:0; width:100%}
+.sheet-note{font-size:12px; color:var(--muted); padding:8px 16px; border-top:1px solid var(--line)}
+
+/* ── print: clean summary for doctor visits ── */
+@media print{
+  body{background:#fff; font-size:12.5px}
+  .no-print, .tabs, .search, .rec-actions, .log-actions, details.howto, .header-actions{display:none !important}
+  .patient-card, .card, .folder, .rec, .log{box-shadow:none; border-color:#bbb; break-inside:avoid}
+  .wrap{padding:0; max-width:100%}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important; transition:none !important}
+  html{scroll-behavior:auto}
+}
+@media (max-width:520px){
+  .ruled-row{flex-direction:column; gap:2px}
+  .ruled-row .v{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ═══════════ PATIENT HEADER (fills itself from your data below) ═══════════ -->
+  <section class="patient-card">
+    <div class="patient-top">
+      <div>
+        <div class="eyebrow">Patient record</div>
+        <h1 id="childName">—</h1>
+      </div>
+      <div class="header-actions no-print">
+        <button class="btn btn-ghost" onclick="window.print()">🖨 Print summary</button>
+        <a class="btn btn-ghost" href="#howto">✏️ How to edit</a>
+      </div>
+    </div>
+    <div class="ruled" id="ruledRows"></div>
+  </section>
+
+  <!-- ═══════════ KEY INFO CARDS ═══════════ -->
+  <section class="grid">
+    <div class="card allergy">
+      <h2>⚠️ Allergies</h2>
+      <div id="allergyList"></div>
+    </div>
+    <div class="card">
+      <h2>🩺 Ongoing conditions</h2>
+      <div id="conditionList"></div>
+    </div>
+    <div class="card">
+      <h2>💊 Current medications</h2>
+      <div id="medList"></div>
+    </div>
+    <div class="card">
+      <h2>📞 Care team &amp; emergency</h2>
+      <div id="contactList"></div>
+    </div>
+  </section>
+  <section class="card notes-card" id="notesCard" style="display:none; margin-bottom:8px">
+    <h2>📝 Notes</h2>
+    <p id="notesText"></p>
+  </section>
+
+  <!-- ═══════════ MEDICAL HISTORY ═══════════ -->
+  <section class="records-head">
+    <h2>Medical history</h2>
+    <p class="sub" id="recCount"></p>
+  </section>
+  <div class="tabs no-print" id="tabs" role="tablist"></div>
+  <div class="folder">
+    <input type="search" class="search no-print" id="search"
+           placeholder="Search by illness, doctor, hospital, test…" aria-label="Search records">
+    <div id="timeline"></div>
+  </div>
+
+  <!-- ═══════════ DAILY THERAPY LOGS ═══════════ -->
+  <section class="records-head">
+    <h2>Daily therapy logs</h2>
+    <p class="sub" id="logCount"></p>
+  </section>
+  <div class="tabs no-print" id="logTabs" role="tablist"></div>
+  <div class="folder">
+    <input type="search" class="search no-print" id="logSearch"
+           placeholder="Search sessions — activity, therapist, centre…" aria-label="Search therapy logs">
+    <div id="logTimeline"></div>
+  </div>
+
+  <!-- ═══════════ HOW TO ADD YOUR DATA ═══════════ -->
+  <details class="howto" id="howto">
+    <summary>How to add your child's details &amp; PDF links</summary>
+    <ol>
+      <li>Open <b>this HTML file</b> in any text editor (Notepad, VS Code…). Everything you edit lives in <b>one place</b> — scroll to the banner that says <code>STEP 1 — YOUR CHILD'S DETAILS</code>.</li>
+      <li><b>Step 1:</b> fill in the <code>CHILD</code> block — name, date of birth (<code>YYYY-MM-DD</code>), blood group, allergies, medications, care team (pediatrician, neurologist, therapy centre) and emergency contacts. Delete the sample values.</li>
+      <li><b>Step 2 — Medical history:</b> in the <code>RECORDS</code> block, each <code>{ … }</code> is one record. Copy-paste a block to add a new entry. <code>category</code> must be one of: <code>Vaccination</code>, <code>Doctor Visit</code>, <code>Neurology</code>, <code>Therapy Assessment</code>, <code>Lab Report</code>, <code>Prescription</code>, <code>Hospitalization</code>, <code>Other</code>. Tabs appear automatically for categories that have at least one entry.</li>
+      <li><b>Step 3 — Daily therapy logs:</b> in the <code>THERAPY_LOGS</code> block, each <code>{ … }</code> is one session. <code>therapy</code> must be one of: <code>Speech Therapy</code>, <code>Occupational Therapy</code>, <code>Physiotherapy</code>, <code>Behavioural Therapy</code>, <code>Special Education</code>, <code>Other</code>. The <code>driveLink</code> here is optional — use it only when the centre shares a daily report PDF.</li>
+      <li><b>Google Drive link:</b> in Drive, right-click the PDF → <b>Share</b> → <b>Copy link</b>, then paste it into the record's <code>driveLink</code> line, replacing <code>PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE</code> (keep the quotes).</li>
+      <li><b>Sharing setting:</b> if only you will open this page while signed in to your own Google account, "Restricted" is fine. If family members should view the PDFs too, set the file to <i>Anyone with the link → Viewer</i>.</li>
+      <li>Save the file and refresh this page in your browser — done.</li>
+    </ol>
+  </details>
+
+  <footer>
+    <span>🔒 This file contains personal medical information — keep it on your own device or private storage. Don't upload it to a public website.</span>
+    <span id="lastUpdated"></span>
+  </footer>
+</div>
+
+<!-- ═══════════ PDF PREVIEW MODAL ═══════════ -->
+<div class="overlay" id="overlay" onclick="if(event.target===this) closePdf()">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="PDF preview">
+    <div class="sheet-head">
+      <span class="t" id="pdfTitle"></span>
+      <a class="btn btn-ghost" id="pdfOpen" href="#" target="_blank" rel="noopener">Open in Drive ↗</a>
+      <button class="btn btn-primary" onclick="closePdf()">Close</button>
+    </div>
+    <iframe id="pdfFrame" title="PDF preview" allow="fullscreen"></iframe>
+    <div class="sheet-note">Preview not loading? Use "Open in Drive" — you may need to be signed in to the Google account that has access to this file.</div>
+  </div>
+</div>
+
+<script>
+/* ╔════════════════════════════════════════════════════════════════════╗
+   ║                                                                    ║
+   ║   ✏️  STEP 1 — YOUR CHILD'S DETAILS  (edit the values below)       ║
+   ║                                                                    ║
+   ║   This is the ONLY part of the file you need to touch.             ║
+   ║   Keep the quotes and commas exactly as they are.                  ║
+   ║                                                                    ║
+   ╚════════════════════════════════════════════════════════════════════╝ */
+
+const CHILD = {
+  name: "Pranika Sharma",          // 👈 child's full name
+  dob: "2023-01-14",                  // 👈 date of birth in YYYY-MM-DD (age is calculated automatically)
+  bloodGroup: "O+",
+  heightCm: "99",                    // latest height in cm ("" if unknown)
+  weightKg: "14.7",                   // latest weight in kg ("" if unknown)
+
+  allergies: [                        // one per line, in quotes — [] if none
+    "None",
+  ],
+  conditions: [                       // ongoing conditions, [] if none
+    "Expressive Speech Delay",
+    "Doesn't Socialize",
+    "Behavioral Concerns",
+  ],
+  medications: [                      // current regular medicines, [] if none
+    { name: "Powder H Peg (laxative)", dose: "", frequency: "0-1-0-0 (for 15 days)" },
+    { name: "Drop Colisma (probiotic)", dose: "", frequency: "15 drops (Once a day)" },
+    { name: "Syrup Cyclopam (for abdominal pain/cramps)", dose: "", frequency: "4ml (Thrice a day | As needed (SOS))" },
+    { name: "Suspension Calpol", dose: "250 mg", frequency: "As needed (SOS)" },
+    { name: "Vibrocar Syrup", dose: "4ml", frequency: "1-0-1 (for 2 months)" },
+    { name: "IQNorm Syrup", dose: "4ml", frequency: "1-0-1 (for 2 months)" },
+    { name: "Autinorm Syrup", dose: "5ml", frequency: "1-0-1 (for 2 months)" },
+  ],
+
+  pediatrician: {
+    name: "Dr. Chandrashekhar T.",
+    clinic: "Janani Clinic, Bengaluru",
+    phone: "+91 70224 69312",
+  },
+  careTeam: [                         // neurologist, therapy centre, any other specialist — [] if none
+    { role: "Senior Consultant Pediatric Neurologist and Developmental Pediatrician", name: "Dr. Usha Mallinath", clinic: "Manipal Hospital, Whitefield", phone: "080 25027617/080 25027000" },
+    { role: "Therapy Centre(ABA|ST|OT)",        name: "Early Autism Ventures", clinic: "Coordinator: Ms. Pema Doma", phone: "+91 96069 95334" },
+  ],
+  emergencyContacts: [
+    { name: "Gaurav Sharma", relation: "Father", phone: "+91-7020514149" },
+    { name: "Neha Sharma", relation: "Mother", phone: "+91-7999853233" },
+  ],
+
+  notes: "",                          // anything a doctor should know at a glance ("" to hide the card)
+  lastUpdated: "17 Aug 2026",         // update this whenever you edit the file
+};
+
+/* ╔════════════════════════════════════════════════════════════════════╗
+   ║                                                                    ║
+   ║   ✏️  STEP 2 — MEDICAL HISTORY  (add one { } block per record)     ║
+   ║                                                                    ║
+   ║   • Copy-paste any block below to add a new record.                ║
+   ║   • category must be one of:                                       ║
+   ║     "Vaccination" | "Doctor Visit" | "Neurology" |                 ║
+   ║     "Therapy Assessment" | "Lab Report" | "Prescription" |         ║
+   ║     "Hospitalization" | "Other"                                    ║
+   ║                                                                    ║
+   ║   • "Neurology"          → pediatric neurologist consultations     ║
+   ║   • "Therapy Assessment" → assessments / reviews / goal-setting    ║
+   ║                            reports from the therapy centre         ║
+   ║                                                                    ║
+   ║   👉 driveLink: paste your Google Drive share link there           ║
+   ║      (Drive → right-click the PDF → Share → Copy link)             ║
+   ║                                                                    ║
+   ║   The entries below are SAMPLES — replace them with real ones.     ║
+   ║                                                                    ║
+   ╚════════════════════════════════════════════════════════════════════╝ */
+
+const RECORDS = [
+  {
+    date: "2026-08-18",
+    category: "Doctor Visit",
+    title: "Consultation for Crankyness",
+    doctor: "Dr. Chandrashekhar T.",
+    facility: "Janani Clinic, Bengaluru",
+    summary: "Suspected stomach pain. Prescribed laxative, probiotics, and pain killers. Advised to observe for a week's time.",
+    driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE
+  },
+  {
+    date: "2025-07-02",               // YYYY-MM-DD
+    category: "Vaccination",
+    title: "Typhoid booster (TCV)",
+    doctor: "Dr. Sample Name",
+    facility: "Sample Children's Clinic",
+    summary: "Booster dose given in left arm. No fever or reaction afterwards. Next vaccine due as per schedule card.",
+    driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE (between the quotes)
+  },
+  {
+    date: "2026-06-09",
+    category: "Neurology",
+    title: "Pediatric neurologist",
+    doctor: "Dr. Usha Mallinath",
+    facility: "Manipal Hospital Whitefield, Bangalore",
+    summary: "First Consultation. Initial screening done; advised aggressive ABA, ST and OT Therapy. Next follow-up in 2 months.",
+    driveLink: "https://drive.google.com/file/d/1fXEhzYjpb4MJj5D4937OUY4Joyn9I6x0/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+  },
+  {
+    date: "2026-06-11",
+    category: "Therapy Assessment",
+    title: "Initial developmental assessment",
+    doctor: "Ms Pema Doma",
+    facility: "Early Autism Ventures, Kalyan Nagar, Bangalore",
+    summary: "Baseline assessment across speech, motor and social skills. Goals set for a 12-week block; speech therapy and OT recommended twice a week. Review assessment scheduled after the block.",
+    driveLink: "https://drive.google.com/file/d/1AmYir4g6lrRt0iFuWK-ac_qotmzsJtnH/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+  },
+  {
+    date: "2026-03-18",
+    category: "Doctor Visit",
+    title: "Fever & cough consultation",
+    doctor: "Dr. Sample Name",
+    facility: "Sample Hospital, Bengaluru",
+    summary: "Viral upper respiratory infection. Prescribed paracetamol for 3 days and steam inhalation. Advised review if fever persists beyond 72 hours.",
+    driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE
+  },
+  /*
+  {
+    date: "2025-11-05",
+    category: "Lab Report",
+    title: "CBC + Vitamin D blood test",
+    doctor: "—",
+    facility: "Sample Diagnostics",
+    summary: "Haemoglobin normal (12.4). Vitamin D slightly low — supplement drops advised for 8 weeks.",
+    driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE
+  },
+  */
+];
+
+/* ╔════════════════════════════════════════════════════════════════════╗
+   ║                                                                    ║
+   ║   ✏️  STEP 3 — DAILY THERAPY LOGS  (one { } block per session)     ║
+   ║                                                                    ║
+   ║   • therapy must be one of:                                        ║
+   ║     "Speech Therapy" | "Occupational Therapy" | "Physiotherapy" |  ║
+   ║     "Behavioural Therapy" | "Special Education" | "Other"          ║
+   ║                                                                    ║
+   ║   • focus    = what was worked on in the session                   ║
+   ║   • progress = therapist's note / home practice given              ║
+   ║   • driveLink is OPTIONAL here — leave "" unless the centre        ║
+   ║     shares a daily report PDF you want to attach                   ║
+   ║                                                                    ║
+   ║   Logs are grouped by month automatically, newest first.           ║
+   ║   The entries below are SAMPLES — replace them with real ones.     ║
+   ║                                                                    ║
+   ╚════════════════════════════════════════════════════════════════════╝ */
+
+const THERAPY_LOGS = [
+  {
+    date: "2026-08-14",               // YYYY-MM-DD
+    therapy: "Speech Therapy",
+    centre: "Sample Child Development Centre",
+    therapist: "Ms. Sample",
+    duration: "45 min",
+    focus: "Two-word phrases and picture naming; turn-taking game with cards.",
+    progress: "Responded well today — practise the animal flashcards 10 minutes daily at home.",
+    driveLink: "",                    // 👈 optional — paste a Drive link if there's a daily report PDF
+  },
+  {
+    date: "2026-08-12",
+    therapy: "Occupational Therapy",
+    centre: "Sample Child Development Centre",
+    therapist: "Mr. Sample",
+    duration: "45 min",
+    focus: "Fine motor — bead threading and tripod grasp practice; swing time for sensory regulation.",
+    progress: "Held the crayon with a better grip. Continue playdough exercises at home.",
+    driveLink: "",
+  },
+  {
+    date: "2026-08-10",
+    therapy: "Special Education",
+    centre: "Sample Child Development Centre",
+    therapist: "Ms. Sample",
+    duration: "60 min",
+    focus: "Sorting by colour and size; 15-minute table-top attention task; number rhymes.",
+    progress: "Completed the sorting task with one prompt.",
+    driveLink: "",
+  },
+  {
+    date: "2026-07-30",
+    therapy: "Speech Therapy",
+    centre: "Sample Child Development Centre",
+    therapist: "Ms. Sample",
+    duration: "45 min",
+    focus: "Blowing exercises and /s/ sound drills; naming everyday objects.",
+    progress: "Home practice: bubble blowing and straw games, 5 minutes twice a day.",
+    driveLink: "",
+  },
+];
+
+/* ╔════════════════════════════════════════════════════════════════════╗
+   ║   ⛔ END OF EDIT AREA — no need to change anything below this line ║
+   ╚════════════════════════════════════════════════════════════════════╝ */
+
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function fmtDate(iso){
+  if(!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return esc(iso);
+  return d.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+}
+function monthLabel(iso){
+  const d = new Date(String(iso) + "T00:00:00");
+  if (isNaN(d)) return "Undated";
+  return d.toLocaleDateString("en-GB", { month:"long", year:"numeric" });
+}
+function ageText(dob){
+  if(!dob) return "";
+  const b = new Date(dob + "T00:00:00"), n = new Date();
+  if (isNaN(b)) return "";
+  let y = n.getFullYear() - b.getFullYear();
+  let m = n.getMonth() - b.getMonth();
+  if (n.getDate() < b.getDate()) m--;
+  if (m < 0) { y--; m += 12; }
+  return y > 0 ? `${y} yr${y>1?"s":""} ${m} mo` : `${m} months`;
+}
+function driveId(link){
+  if(!link) return null;
+  const m = link.match(/\/(?:file\/)?d\/([\w-]{10,})/) || link.match(/[?&]id=([\w-]{10,})/);
+  return m ? m[1] : null;
+}
+const isPlaceholder = link => !link || /PASTE/i.test(link);
+
+const CAT_CLASS = {
+  "Vaccination":"b-vaccination", "Doctor Visit":"b-visit", "Neurology":"b-neuro",
+  "Therapy Assessment":"b-assessment", "Lab Report":"b-lab",
+  "Prescription":"b-prescription", "Hospitalization":"b-hospital", "Other":"b-other",
+};
+const CATEGORIES = ["All","Vaccination","Doctor Visit","Neurology","Therapy Assessment",
+                    "Lab Report","Prescription","Hospitalization","Other"];
+const TYPE_CLASS = {
+  "Speech Therapy":"t-speech", "Occupational Therapy":"t-ot", "Physiotherapy":"t-physio",
+  "Behavioural Therapy":"t-behavioural", "Special Education":"t-sped", "Other":"t-other",
+};
+const THERAPY_TYPES = ["All","Speech Therapy","Occupational Therapy","Physiotherapy",
+                       "Behavioural Therapy","Special Education","Other"];
+const state    = { cat:"All",  q:"" };
+const logState = { type:"All", q:"" };
+
+/* ── header & info cards ─────────────────────────────────────────────── */
+function renderHeader(){
+  $("#childName").textContent = CHILD.name || "Add your child's name";
+  document.title = "Medical Records — " + (CHILD.name || "");
+  const rows = [];
+  rows.push(["Born", `${fmtDate(CHILD.dob)} · ${ageText(CHILD.dob)}`]);
+  if (CHILD.bloodGroup) rows.push(["Blood group", CHILD.bloodGroup]);
+  if (CHILD.heightCm || CHILD.weightKg){
+    const g = [CHILD.heightCm && CHILD.heightCm + " cm", CHILD.weightKg && CHILD.weightKg + " kg"]
+      .filter(Boolean).join(" · ");
+    rows.push(["Height / weight (latest)", g]);
+  }
+  $("#ruledRows").innerHTML = rows.map(([k,v]) =>
+    `<div class="ruled-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+}
+function listOrNone(el, items, mapFn, noneText){
+  el.innerHTML = (items && items.length)
+    ? `<ul>${items.map(mapFn).join("")}</ul>`
+    : `<p class="none">${noneText}</p>`;
+}
+function contactBlock(who, subline, phone){
+  const tel = phone
+    ? `<a href="tel:${esc(String(phone).replace(/\s/g,""))}">${esc(phone)}</a>` : "";
+  return `<div class="contact"><span class="who">${esc(who)}</span><br>
+    <span style="font-size:13px;color:var(--muted)">${esc(subline)}</span><br>${tel}</div>`;
+}
+function renderCards(){
+  listOrNone($("#allergyList"), CHILD.allergies,
+    a => `<li><b>${esc(a)}</b></li>`, "None recorded ✓");
+  listOrNone($("#conditionList"), CHILD.conditions,
+    c => `<li>${esc(c)}</li>`, "None recorded ✓");
+  listOrNone($("#medList"), CHILD.medications,
+    m => `<li>${esc(m.name)}<span class="med-dose">${esc([m.dose, m.frequency].filter(Boolean).join(" · "))}</span></li>`,
+    "No regular medicines ✓");
+
+  let html = "";
+  const p = CHILD.pediatrician || {};
+  if (p.name) html += contactBlock(p.name, p.clinic || "Pediatrician", p.phone);
+  (CHILD.careTeam || []).forEach(ct => {
+    html += contactBlock(ct.name, [ct.role, ct.clinic].filter(Boolean).join(" · "), ct.phone);
+  });
+  (CHILD.emergencyContacts || []).forEach(c => {
+    html += `<div class="contact"><span class="who">${esc(c.name)}</span>
+      <span style="color:var(--muted)">(${esc(c.relation)})</span> ·
+      <a href="tel:${esc((c.phone||"").replace(/\s/g,""))}">${esc(c.phone || "")}</a></div>`;
+  });
+  $("#contactList").innerHTML = html || `<p class="none">Add your care team &amp; contacts in Step 1</p>`;
+
+  if (CHILD.notes){ $("#notesCard").style.display = ""; $("#notesText").textContent = CHILD.notes; }
+  $("#lastUpdated").textContent = CHILD.lastUpdated ? "Last updated " + CHILD.lastUpdated : "";
+}
+
+/* ── shared pdf modal ────────────────────────────────────────────────── */
+function showPdf(title, link){
+  const id = driveId(link); if (!id) return;
+  $("#pdfTitle").textContent = title;
+  $("#pdfOpen").href = link;
+  $("#pdfFrame").src = `https://drive.google.com/file/d/${id}/preview`;
+  $("#overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function openPdf(i){ const r = RECORDS[i];      if (r) showPdf(r.title, r.driveLink); }
+function openLog(i){ const l = THERAPY_LOGS[i]; if (l) showPdf(`${l.therapy} — ${fmtDate(l.date)}`, l.driveLink); }
+function closePdf(){
+  $("#overlay").classList.remove("open");
+  $("#pdfFrame").src = "about:blank";
+  document.body.style.overflow = "";
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePdf(); });
+
+/* ── medical history timeline ────────────────────────────────────────── */
+function counts(){
+  const c = { All: RECORDS.length };
+  RECORDS.forEach(r => c[r.category] = (c[r.category] || 0) + 1);
+  return c;
+}
+function renderTabs(){
+  const c = counts();
+  $("#tabs").innerHTML = CATEGORIES
+    .filter(cat => cat === "All" || c[cat])
+    .map(cat => `<button class="tab ${state.cat===cat?"active":""}" role="tab"
+        aria-selected="${state.cat===cat}" onclick="setCat('${cat}')">
+        ${esc(cat)}<span class="n">${c[cat] || 0}</span></button>`).join("");
+}
+function setCat(cat){ state.cat = cat; renderTabs(); renderTimeline(); }
+
+function visibleRecords(){
+  const q = state.q.trim().toLowerCase();
+  return RECORDS
+    .filter(r => (state.cat === "All" || r.category === state.cat))
+    .filter(r => !q || [r.title, r.summary, r.doctor, r.facility, r.category, r.date]
+      .join(" ").toLowerCase().includes(q))
+    .slice()
+    .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+}
+function actionButtons(r, i){
+  if (isPlaceholder(r.driveLink))
+    return `<span class="nolink">No PDF linked yet — see "How to edit" below</span>`;
+  const id = driveId(r.driveLink);
+  const open = `<a class="btn btn-ghost" href="${esc(r.driveLink)}" target="_blank" rel="noopener">Open in Drive ↗</a>`;
+  return id
+    ? `<button class="btn btn-primary" onclick="openPdf(${i})">📄 View PDF</button>${open}`
+    : open;
+}
+function renderTimeline(){
+  const recs = visibleRecords();
+  $("#recCount").textContent = RECORDS.length
+    ? `${RECORDS.length} record${RECORDS.length>1?"s":""} on file` : "";
+  if (!RECORDS.length){
+    $("#timeline").innerHTML = `<div class="empty"><b>No records yet.</b><br>
+      Open this file in a text editor and add your first entry under <b>STEP 2</b> — see "How to edit" below.</div>`;
+    return;
+  }
+  if (!recs.length){
+    $("#timeline").innerHTML = `<div class="empty">Nothing matches this filter or search.</div>`;
+    return;
+  }
+  let html = "", lastYear = "";
+  recs.forEach(r => {
+    const year = String(r.date || "").slice(0,4) || "Undated";
+    if (year !== lastYear){ html += `<div class="yearhead">${esc(year)}</div>`; lastYear = year; }
+    const idx = RECORDS.indexOf(r);
+    html += `<article class="rec">
+      <div class="rec-top">
+        <span class="badge ${CAT_CLASS[r.category] || "b-other"}">${esc(r.category || "Other")}</span>
+        <span class="rec-date">${fmtDate(r.date)}</span>
+      </div>
+      <h3>${esc(r.title)}</h3>
+      <p class="by">${esc([r.doctor, r.facility].filter(x => x && x !== "—").join(" · "))}</p>
+      <p class="sum">${esc(r.summary)}</p>
+      <div class="rec-actions">${actionButtons(r, idx)}</div>
+    </article>`;
+  });
+  $("#timeline").innerHTML = html;
+}
+
+/* ── daily therapy logs ──────────────────────────────────────────────── */
+function logCounts(){
+  const c = { All: THERAPY_LOGS.length };
+  THERAPY_LOGS.forEach(l => c[l.therapy] = (c[l.therapy] || 0) + 1);
+  return c;
+}
+function renderLogTabs(){
+  const c = logCounts();
+  $("#logTabs").innerHTML = THERAPY_TYPES
+    .filter(t => t === "All" || c[t])
+    .map(t => `<button class="tab ${logState.type===t?"active":""}" role="tab"
+        aria-selected="${logState.type===t}" onclick="setLogType('${t}')">
+        ${esc(t)}<span class="n">${c[t] || 0}</span></button>`).join("");
+}
+function setLogType(t){ logState.type = t; renderLogTabs(); renderLogs(); }
+
+function visibleLogs(){
+  const q = logState.q.trim().toLowerCase();
+  return THERAPY_LOGS
+    .filter(l => (logState.type === "All" || l.therapy === logState.type))
+    .filter(l => !q || [l.therapy, l.centre, l.therapist, l.focus, l.progress, l.date]
+      .join(" ").toLowerCase().includes(q))
+    .slice()
+    .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+}
+function logButtons(l, i){
+  if (isPlaceholder(l.driveLink)) return "";
+  const id = driveId(l.driveLink);
+  const open = `<a class="btn btn-ghost btn-sm" href="${esc(l.driveLink)}" target="_blank" rel="noopener">Open in Drive ↗</a>`;
+  const view = id ? `<button class="btn btn-primary btn-sm" onclick="openLog(${i})">📄 Daily report</button>` : "";
+  return `<div class="log-actions">${view}${open}</div>`;
+}
+function renderLogs(){
+  const logs = visibleLogs();
+  $("#logCount").textContent = THERAPY_LOGS.length
+    ? `${THERAPY_LOGS.length} session${THERAPY_LOGS.length>1?"s":""} on file` : "";
+  if (!THERAPY_LOGS.length){
+    $("#logTimeline").innerHTML = `<div class="empty"><b>No sessions logged yet.</b><br>
+      Add your first session under <b>STEP 3</b> in this file — see "How to edit" below.</div>`;
+    return;
+  }
+  if (!logs.length){
+    $("#logTimeline").innerHTML = `<div class="empty">Nothing matches this filter or search.</div>`;
+    return;
+  }
+  const perMonth = {};
+  logs.forEach(l => { const k = monthLabel(l.date); perMonth[k] = (perMonth[k] || 0) + 1; });
+  let html = "", lastMonth = "";
+  logs.forEach(l => {
+    const mk = monthLabel(l.date);
+    if (mk !== lastMonth){
+      html += `<div class="yearhead">${esc(mk)} · ${perMonth[mk]} session${perMonth[mk]>1?"s":""}</div>`;
+      lastMonth = mk;
+    }
+    const idx = THERAPY_LOGS.indexOf(l);
+    const meta = [l.centre, l.therapist, l.duration].filter(Boolean).join(" · ");
+    html += `<article class="log">
+      <div class="log-top">
+        <span class="badge ${TYPE_CLASS[l.therapy] || "t-other"}">${esc(l.therapy || "Other")}</span>
+        <span class="rec-date">${fmtDate(l.date)}</span>
+        <span class="meta">${esc(meta)}</span>
+      </div>
+      ${l.focus ? `<p class="focus">${esc(l.focus)}</p>` : ""}
+      ${l.progress ? `<p class="prog">${esc(l.progress)}</p>` : ""}
+      ${logButtons(l, idx)}
+    </article>`;
+  });
+  $("#logTimeline").innerHTML = html;
+}
+
+/* ── boot ────────────────────────────────────────────────────────────── */
+$("#search").addEventListener("input",    e => { state.q = e.target.value;    renderTimeline(); });
+$("#logSearch").addEventListener("input", e => { logState.q = e.target.value; renderLogs(); });
+renderHeader(); renderCards();
+renderTabs(); renderTimeline();
+renderLogTabs(); renderLogs();
+</script>
+</body>
+</html>
