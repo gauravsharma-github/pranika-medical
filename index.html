@@ -12,7 +12,7 @@
 <style>
 /* ─────────────────────────────────────────────
    THEME · "the family health file"
-   red is reserved for allergies only,
+   red marks difficult days only,
    mono type marks clinical data (dates, doses)
    ───────────────────────────────────────────── */
 :root{
@@ -77,8 +77,6 @@ h1{
 .card ul{margin:0; padding-left:18px}
 .card li{margin:5px 0}
 .card .none{color:var(--muted); font-size:14px}
-.card.allergy{background:var(--red-wash); border-color:#EDCFC9}
-.card.allergy h2{color:var(--red)}
 .med-dose{font-family:var(--mono); font-size:13px; color:var(--muted); display:block}
 .contact{margin:8px 0; font-size:14.5px}
 .contact .who{font-weight:600}
@@ -135,13 +133,12 @@ h1{
 .badge.b-prescription{background:#EFE9F7; color:#5B3E9E}
 .badge.b-hospital{background:#F8E9E6; color:#A44334}
 .badge.b-other{background:#ECEFEE; color:#5F6F69}
-/* therapy types */
-.badge.t-speech{background:#E3F1EB; color:#177E63}
-.badge.t-ot{background:#F6EEDD; color:#9A5B13}
-.badge.t-physio{background:#E7EDF8; color:#2B4C8C}
-.badge.t-behavioural{background:#EFE9F7; color:#7A3E9D}
-.badge.t-sped{background:#EDF2E2; color:#4D6A1F}
-.badge.t-other{background:#ECEFEE; color:#5F6F69}
+/* session levels: mood / prompting / behaviour */
+.badge.lv-great{background:#E3F1EB; color:#177E63}
+.badge.lv-good{background:#E2F1F5; color:#0E7490}
+.badge.lv-mid{background:#F6EEDD; color:#8A6414}
+.badge.lv-hard{background:#F8E9E6; color:#A44334}
+.badge.lv-alert{background:var(--red-wash); color:var(--red)}
 .rec-date{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
 .rec h3{font-family:var(--display); font-weight:700; font-size:17px; margin:2px 0 3px}
 .rec .by{font-size:13px; color:var(--muted); margin:0 0 7px}
@@ -163,19 +160,37 @@ h1{
 }
 .empty b{color:var(--ink)}
 
-/* ── daily therapy log rows ── */
+/* ── daily therapy session rows ── */
 .log{
   border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:9px 0;
   background:#FDFEFD;
 }
 .log-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .log .meta{font-size:12.5px; color:var(--muted)}
-.log .focus{font-size:14px; margin:7px 0 0}
+.log-stats{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px}
+.log .bnote{font-size:12.5px; color:var(--muted)}
+.log .focus{font-size:14px; margin:8px 0 0}
+.log .words{
+  margin:8px 0 0; font-size:14px; background:var(--green-wash);
+  border-radius:8px; padding:6px 10px; display:inline-block;
+}
 .log .prog{
-  font-size:13.5px; color:var(--green); margin:6px 0 0;
+  font-size:13.5px; color:var(--green); margin:7px 0 0;
   padding-left:10px; border-left:3px solid var(--green-wash);
 }
+.log .pnote{
+  font-size:13.5px; color:var(--muted); margin:6px 0 0;
+  padding-left:10px; border-left:3px solid var(--line);
+}
 .log-actions{margin-top:9px; display:flex; gap:8px; flex-wrap:wrap}
+
+/* ── therapy tracker bar (google sheet) ── */
+.tracker{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  background:var(--green-wash); border:1px solid #CBE4DA; border-radius:12px;
+  padding:12px 14px; margin-bottom:10px;
+}
+.tracker .tx{flex:1; min-width:230px; font-size:14px}
 
 /* ── how-to & footer ── */
 details.howto{
@@ -198,7 +213,7 @@ footer{
   gap:14px; flex-wrap:wrap;
 }
 
-/* ── pdf modal ── */
+/* ── document preview modal ── */
 .overlay{
   position:fixed; inset:0; background:rgba(20,30,27,.6); z-index:50;
   display:none; align-items:center; justify-content:center; padding:14px;
@@ -221,7 +236,7 @@ footer{
 /* ── print: clean summary for doctor visits ── */
 @media print{
   body{background:#fff; font-size:12.5px}
-  .no-print, .tabs, .search, .rec-actions, .log-actions, details.howto, .header-actions{display:none !important}
+  .no-print, .tabs, .search, .rec-actions, .log-actions, .tracker, details.howto, .header-actions{display:none !important}
   .patient-card, .card, .folder, .rec, .log{box-shadow:none; border-color:#bbb; break-inside:avoid}
   .wrap{padding:0; max-width:100%}
 }
@@ -255,10 +270,6 @@ footer{
 
   <!-- ═══════════ KEY INFO CARDS ═══════════ -->
   <section class="grid">
-    <div class="card allergy">
-      <h2>⚠️ Allergies</h2>
-      <div id="allergyList"></div>
-    </div>
     <div class="card">
       <h2>🩺 Ongoing conditions</h2>
       <div id="conditionList"></div>
@@ -289,28 +300,29 @@ footer{
     <div id="timeline"></div>
   </div>
 
-  <!-- ═══════════ DAILY THERAPY LOGS ═══════════ -->
+  <!-- ═══════════ DAILY THERAPY SESSIONS ═══════════ -->
   <section class="records-head">
-    <h2>Daily therapy logs</h2>
+    <h2>Daily therapy sessions</h2>
     <p class="sub" id="logCount"></p>
   </section>
-  <div class="tabs no-print" id="logTabs" role="tablist"></div>
   <div class="folder">
+    <div id="trackerBar"></div>
     <input type="search" class="search no-print" id="logSearch"
-           placeholder="Search sessions — activity, therapist, centre…" aria-label="Search therapy logs">
+           placeholder="Search sessions — words, skills, notes, mood…" aria-label="Search therapy sessions">
     <div id="logTimeline"></div>
   </div>
 
   <!-- ═══════════ HOW TO ADD YOUR DATA ═══════════ -->
   <details class="howto" id="howto">
-    <summary>How to add your child's details &amp; PDF links</summary>
+    <summary>How to add your child's details, PDF links &amp; the tracker sheet</summary>
     <ol>
       <li>Open <b>this HTML file</b> in any text editor (Notepad, VS Code…). Everything you edit lives in <b>one place</b> — scroll to the banner that says <code>STEP 1 — YOUR CHILD'S DETAILS</code>.</li>
-      <li><b>Step 1:</b> fill in the <code>CHILD</code> block — name, date of birth (<code>YYYY-MM-DD</code>), blood group, allergies, medications, care team (pediatrician, neurologist, therapy centre) and emergency contacts. Delete the sample values.</li>
+      <li><b>Step 1:</b> fill in the <code>CHILD</code> block — name, date of birth (<code>YYYY-MM-DD</code>), blood group, medications, care team (pediatrician, neurologist, therapy centre) and emergency contacts.</li>
       <li><b>Step 2 — Medical history:</b> in the <code>RECORDS</code> block, each <code>{ … }</code> is one record. Copy-paste a block to add a new entry. <code>category</code> must be one of: <code>Vaccination</code>, <code>Doctor Visit</code>, <code>Neurology</code>, <code>Therapy Assessment</code>, <code>Lab Report</code>, <code>Prescription</code>, <code>Hospitalization</code>, <code>Other</code>. Tabs appear automatically for categories that have at least one entry.</li>
-      <li><b>Step 3 — Daily therapy logs:</b> in the <code>THERAPY_LOGS</code> block, each <code>{ … }</code> is one session. <code>therapy</code> must be one of: <code>Speech Therapy</code>, <code>Occupational Therapy</code>, <code>Physiotherapy</code>, <code>Behavioural Therapy</code>, <code>Special Education</code>, <code>Other</code>. The <code>driveLink</code> here is optional — use it only when the centre shares a daily report PDF.</li>
-      <li><b>Google Drive link:</b> in Drive, right-click the PDF → <b>Share</b> → <b>Copy link</b>, then paste it into the record's <code>driveLink</code> line, replacing <code>PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE</code> (keep the quotes).</li>
-      <li><b>Sharing setting:</b> if only you will open this page while signed in to your own Google account, "Restricted" is fine. If family members should view the PDFs too, set the file to <i>Anyone with the link → Viewer</i>.</li>
+      <li><b>Step 3 — Therapy Tracker sheet:</b> paste your Google Sheet's link into <code>TRACKER.sheetLink</code> (in Sheets: <b>Share</b> → <b>Copy link</b>). A green bar then appears above the sessions with <b>Quick view</b> (opens the sheet in a popup here) and <b>Open sheet ↗</b>. <b>Sharing:</b> since the sheet holds detailed session data, the safest option is to Share it with specific people (family / therapist email IDs) as <i>Viewer</i> — they'll need to be signed in to Google for Quick view to load. <i>Anyone with the link → Viewer</i> also works and is easier for relatives, but then anyone who gets hold of the link can read it.</li>
+      <li><b>Step 3 — Session entries:</b> in the <code>THERAPY_LOGS</code> block, each <code>{ … }</code> is <b>one combined session</b> (the full ~3-hour block covering ABA + OT + ST together). The dropdown-style fields take the same values as your sheet: <code>mood</code> = Very good / Good / Okay / Difficult · <code>prompting</code> = None / Minimal / Moderate / A lot · <code>behaviour</code> = None / Mild / Moderate / Significant. Every field except <code>date</code> is optional — leave <code>""</code> and it simply won't show. Day-to-day detail like food, water and bathroom stays in the tracker sheet; keep the page entries as highlights. <code>driveLink</code> is optional, for a daily report PDF if the centre shares one.</li>
+      <li><b>Google Drive link (records):</b> in Drive, right-click the PDF → <b>Share</b> → <b>Copy link</b>, then paste it into the record's <code>driveLink</code> line, replacing <code>PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE</code> (keep the quotes).</li>
+      <li><b>PDF sharing setting:</b> if only you will open this page while signed in to your own Google account, "Restricted" is fine. If family members should view the PDFs too, share those files the same way as the sheet.</li>
       <li>Save the file and refresh this page in your browser — done.</li>
     </ol>
   </details>
@@ -321,16 +333,16 @@ footer{
   </footer>
 </div>
 
-<!-- ═══════════ PDF PREVIEW MODAL ═══════════ -->
+<!-- ═══════════ DOCUMENT PREVIEW MODAL ═══════════ -->
 <div class="overlay" id="overlay" onclick="if(event.target===this) closePdf()">
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="PDF preview">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Document preview">
     <div class="sheet-head">
       <span class="t" id="pdfTitle"></span>
       <a class="btn btn-ghost" id="pdfOpen" href="#" target="_blank" rel="noopener">Open in Drive ↗</a>
       <button class="btn btn-primary" onclick="closePdf()">Close</button>
     </div>
-    <iframe id="pdfFrame" title="PDF preview" allow="fullscreen"></iframe>
-    <div class="sheet-note">Preview not loading? Use "Open in Drive" — you may need to be signed in to the Google account that has access to this file.</div>
+    <iframe id="pdfFrame" title="Document preview" allow="fullscreen"></iframe>
+    <div class="sheet-note">Preview not loading? Use the open button — you may need to be signed in to a Google account that has access to this file.</div>
   </div>
 </div>
 
@@ -404,8 +416,6 @@ const CHILD = {
    ║   👉 driveLink: paste your Google Drive share link there           ║
    ║      (Drive → right-click the PDF → Share → Copy link)             ║
    ║                                                                    ║
-   ║   The entries below are SAMPLES — replace them with real ones.     ║
-   ║                                                                    ║
    ╚════════════════════════════════════════════════════════════════════╝ */
 
 const RECORDS = [
@@ -469,61 +479,61 @@ const RECORDS = [
 
 /* ╔════════════════════════════════════════════════════════════════════╗
    ║                                                                    ║
-   ║   ✏️  STEP 3 — DAILY THERAPY LOGS  (one { } block per session)     ║
+   ║   ✏️  STEP 3 — THERAPY TRACKER + DAILY SESSIONS                    ║
    ║                                                                    ║
-   ║   • therapy must be one of:                                        ║
-   ║     "Speech Therapy" | "Occupational Therapy" | "Physiotherapy" |  ║
-   ║     "Behavioural Therapy" | "Special Education" | "Other"          ║
+   ║   A) TRACKER.sheetLink → paste your Therapy Tracker Google         ║
+   ║      Sheet link (Sheets → Share → Copy link). The page will        ║
+   ║      show a green bar with "Quick view" and "Open sheet".          ║
    ║                                                                    ║
-   ║   • focus    = what was worked on in the session                   ║
-   ║   • progress = therapist's note / home practice given              ║
-   ║   • driveLink is OPTIONAL here — leave "" unless the centre        ║
-   ║     shares a daily report PDF you want to attach                   ║
+   ║   B) THERAPY_LOGS → one { } block per COMBINED session             ║
+   ║      (the full ~3-hr block: ABA + OT + ST together).               ║
    ║                                                                    ║
-   ║   Logs are grouped by month automatically, newest first.           ║
+   ║      Dropdown-style values (same as your sheet):                   ║
+   ║      • mood:      "Very good" | "Good" | "Okay" | "Difficult"      ║
+   ║      • prompting: "None" | "Minimal" | "Moderate" | "A lot"        ║
+   ║      • behaviour: "None" | "Mild" | "Moderate" | "Significant"     ║
+   ║                                                                    ║
+   ║      Every field except date is optional — leave "" to hide it.    ║
+   ║      driveLink is optional (daily report PDF, if shared).          ║
+   ║                                                                    ║
    ║   The entries below are SAMPLES — replace them with real ones.     ║
    ║                                                                    ║
    ╚════════════════════════════════════════════════════════════════════╝ */
 
+const TRACKER = {
+  sheetLink: "PASTE_YOUR_GOOGLE_SHEET_LINK_HERE",   // 👈 YOUR THERAPY TRACKER SHEET LINK GOES HERE
+  label: "Therapy Tracker — Daily Log & Progress Summary",
+};
+
 const THERAPY_LOGS = [
   {
-    date: "2026-08-14",               // YYYY-MM-DD
-    therapy: "Speech Therapy",
+    date: "2026-08-18",               // YYYY-MM-DD
+    duration: "3 hrs",
     centre: "Sample Child Development Centre",
-    therapist: "Ms. Sample",
-    duration: "45 min",
-    focus: "Two-word phrases and picture naming; turn-taking game with cards.",
-    progress: "Responded well today — practise the animal flashcards 10 minutes daily at home.",
+    therapist: "Ms. Sample (ABA) · Mr. Sample (OT)",
+    mood: "Good",                     // Very good | Good | Okay | Difficult
+    prompting: "Moderate",            // None | Minimal | Moderate | A lot
+    behaviour: "Mild",                // None | Mild | Moderate | Significant
+    behaviourNote: "Brief upset during transition from swing to table work",
+    skills: "Eye contact, choice making, following 2-step instructions (arms up, pick it up); bead threading for fine motor",
+    words: "\"more\", \"open\", \"give\"",
+    therapistNote: "Needed fewer prompts for choice making today — keep offering choices at home during snack time.",
+    parentNote: "Happy after the session; repeated \"open\" at home in the evening.",
     driveLink: "",                    // 👈 optional — paste a Drive link if there's a daily report PDF
   },
   {
-    date: "2026-08-12",
-    therapy: "Occupational Therapy",
-    centre: "Sample Child Development Centre",
-    therapist: "Mr. Sample",
-    duration: "45 min",
-    focus: "Fine motor — bead threading and tripod grasp practice; swing time for sensory regulation.",
-    progress: "Held the crayon with a better grip. Continue playdough exercises at home.",
-    driveLink: "",
-  },
-  {
-    date: "2026-08-10",
-    therapy: "Special Education",
+    date: "2026-08-16",
+    duration: "3 hrs",
     centre: "Sample Child Development Centre",
     therapist: "Ms. Sample",
-    duration: "60 min",
-    focus: "Sorting by colour and size; 15-minute table-top attention task; number rhymes.",
-    progress: "Completed the sorting task with one prompt.",
-    driveLink: "",
-  },
-  {
-    date: "2026-07-30",
-    therapy: "Speech Therapy",
-    centre: "Sample Child Development Centre",
-    therapist: "Ms. Sample",
-    duration: "45 min",
-    focus: "Blowing exercises and /s/ sound drills; naming everyday objects.",
-    progress: "Home practice: bubble blowing and straw games, 5 minutes twice a day.",
+    mood: "Okay",
+    prompting: "A lot",
+    behaviour: "None",
+    behaviourNote: "",
+    skills: "Turn-taking game, sorting by colour, /s/ sound practice; swing time for sensory regulation",
+    words: "\"ball\"",
+    therapistNote: "Sleepy at the start — engagement improved after a movement break.",
+    parentNote: "",
     driveLink: "",
   },
 ];
@@ -564,6 +574,13 @@ function driveId(link){
   const m = link.match(/\/(?:file\/)?d\/([\w-]{10,})/) || link.match(/[?&]id=([\w-]{10,})/);
   return m ? m[1] : null;
 }
+function previewUrl(link){
+  const id = driveId(link); if (!id) return null;
+  if (/docs\.google\.com\/spreadsheets/.test(link)) return `https://docs.google.com/spreadsheets/d/${id}/preview`;
+  if (/docs\.google\.com\/document/.test(link))     return `https://docs.google.com/document/d/${id}/preview`;
+  if (/docs\.google\.com\/presentation/.test(link)) return `https://docs.google.com/presentation/d/${id}/preview`;
+  return `https://drive.google.com/file/d/${id}/preview`;
+}
 const isPlaceholder = link => !link || /PASTE/i.test(link);
 
 const CAT_CLASS = {
@@ -573,14 +590,16 @@ const CAT_CLASS = {
 };
 const CATEGORIES = ["All","Vaccination","Doctor Visit","Neurology","Therapy Assessment",
                     "Lab Report","Prescription","Hospitalization","Other"];
-const TYPE_CLASS = {
-  "Speech Therapy":"t-speech", "Occupational Therapy":"t-ot", "Physiotherapy":"t-physio",
-  "Behavioural Therapy":"t-behavioural", "Special Education":"t-sped", "Other":"t-other",
-};
-const THERAPY_TYPES = ["All","Speech Therapy","Occupational Therapy","Physiotherapy",
-                       "Behavioural Therapy","Special Education","Other"];
-const state    = { cat:"All",  q:"" };
-const logState = { type:"All", q:"" };
+function lvClass(field, v){
+  const s = String(v || "").toLowerCase();
+  if (field === "behaviour"){
+    return {none:"lv-great", mild:"lv-mid", moderate:"lv-hard", significant:"lv-alert"}[s] || "b-other";
+  }
+  return {"very good":"lv-great", good:"lv-good", okay:"lv-mid", difficult:"lv-hard",
+          none:"lv-great", minimal:"lv-good", moderate:"lv-mid", "a lot":"lv-hard"}[s] || "b-other";
+}
+const state    = { cat:"All", q:"" };
+const logState = { q:"" };
 
 /* ── header & info cards ─────────────────────────────────────────────── */
 function renderHeader(){
@@ -609,8 +628,6 @@ function contactBlock(who, subline, phone){
     <span style="font-size:13px;color:var(--muted)">${esc(subline)}</span><br>${tel}</div>`;
 }
 function renderCards(){
-  listOrNone($("#allergyList"), CHILD.allergies,
-    a => `<li><b>${esc(a)}</b></li>`, "None recorded ✓");
   listOrNone($("#conditionList"), CHILD.conditions,
     c => `<li>${esc(c)}</li>`, "None recorded ✓");
   listOrNone($("#medList"), CHILD.medications,
@@ -634,17 +651,19 @@ function renderCards(){
   $("#lastUpdated").textContent = CHILD.lastUpdated ? "Last updated " + CHILD.lastUpdated : "";
 }
 
-/* ── shared pdf modal ────────────────────────────────────────────────── */
-function showPdf(title, link){
-  const id = driveId(link); if (!id) return;
+/* ── shared document preview modal ───────────────────────────────────── */
+function showDoc(title, link, openLabel){
+  const pv = previewUrl(link); if (!pv) return;
   $("#pdfTitle").textContent = title;
   $("#pdfOpen").href = link;
-  $("#pdfFrame").src = `https://drive.google.com/file/d/${id}/preview`;
+  $("#pdfOpen").textContent = openLabel || "Open in Drive ↗";
+  $("#pdfFrame").src = pv;
   $("#overlay").classList.add("open");
   document.body.style.overflow = "hidden";
 }
-function openPdf(i){ const r = RECORDS[i];      if (r) showPdf(r.title, r.driveLink); }
-function openLog(i){ const l = THERAPY_LOGS[i]; if (l) showPdf(`${l.therapy} — ${fmtDate(l.date)}`, l.driveLink); }
+function openPdf(i){ const r = RECORDS[i];      if (r) showDoc(r.title, r.driveLink); }
+function openLog(i){ const l = THERAPY_LOGS[i]; if (l) showDoc("Daily report — " + fmtDate(l.date), l.driveLink); }
+function openTracker(){ showDoc(TRACKER.label || "Therapy Tracker", TRACKER.sheetLink, "Open in Google Sheets ↗"); }
 function closePdf(){
   $("#overlay").classList.remove("open");
   $("#pdfFrame").src = "about:blank";
@@ -718,49 +737,62 @@ function renderTimeline(){
   $("#timeline").innerHTML = html;
 }
 
-/* ── daily therapy logs ──────────────────────────────────────────────── */
-function logCounts(){
-  const c = { All: THERAPY_LOGS.length };
-  THERAPY_LOGS.forEach(l => c[l.therapy] = (c[l.therapy] || 0) + 1);
-  return c;
+/* ── therapy tracker bar (google sheet) ──────────────────────────────── */
+function renderTracker(){
+  const el = $("#trackerBar");
+  const link = (typeof TRACKER !== "undefined" && TRACKER.sheetLink) || "";
+  if (isPlaceholder(link)){
+    el.innerHTML = `<div class="tracker no-print"><span class="tx">📊 Day-by-day detail lives in the
+      <b>Therapy Tracker</b> Google Sheet — paste its link under <b>STEP 3</b> in this file to show
+      the buttons here (see "How to edit" below).</span></div>`;
+    return;
+  }
+  const pv = previewUrl(link);
+  el.innerHTML = `<div class="tracker">
+    <span class="tx">📊 <b>Therapy Tracker</b> — full day-by-day detail (mood, prompting, words,
+      behaviour, weekly progress) lives in the Google Sheet.</span>
+    ${pv ? `<button class="btn btn-primary btn-sm" onclick="openTracker()">Quick view</button>` : ""}
+    <a class="btn btn-ghost btn-sm" href="${esc(link)}" target="_blank" rel="noopener">Open sheet ↗</a>
+  </div>`;
 }
-function renderLogTabs(){
-  const c = logCounts();
-  $("#logTabs").innerHTML = THERAPY_TYPES
-    .filter(t => t === "All" || c[t])
-    .map(t => `<button class="tab ${logState.type===t?"active":""}" role="tab"
-        aria-selected="${logState.type===t}" onclick="setLogType('${t}')">
-        ${esc(t)}<span class="n">${c[t] || 0}</span></button>`).join("");
-}
-function setLogType(t){ logState.type = t; renderLogTabs(); renderLogs(); }
 
+/* ── daily therapy sessions ──────────────────────────────────────────── */
 function visibleLogs(){
   const q = logState.q.trim().toLowerCase();
   return THERAPY_LOGS
-    .filter(l => (logState.type === "All" || l.therapy === logState.type))
-    .filter(l => !q || [l.therapy, l.centre, l.therapist, l.focus, l.progress, l.date]
+    .filter(l => !q || [l.date, l.centre, l.therapist, l.mood, l.prompting, l.behaviour,
+        l.behaviourNote, l.skills, l.words, l.therapistNote, l.parentNote]
       .join(" ").toLowerCase().includes(q))
     .slice()
     .sort((a,b) => String(b.date).localeCompare(String(a.date)));
 }
+function statBadges(l){
+  const parts = [];
+  if (l.mood)      parts.push(`<span class="badge ${lvClass("mood", l.mood)}">Mood: ${esc(l.mood)}</span>`);
+  if (l.prompting) parts.push(`<span class="badge ${lvClass("prompting", l.prompting)}">Prompting: ${esc(l.prompting)}</span>`);
+  if (l.behaviour) parts.push(`<span class="badge ${lvClass("behaviour", l.behaviour)}">Behaviour: ${esc(l.behaviour)}</span>`);
+  if (l.behaviour && l.behaviourNote) parts.push(`<span class="bnote">— ${esc(l.behaviourNote)}</span>`);
+  return parts.length ? `<div class="log-stats">${parts.join("")}</div>` : "";
+}
 function logButtons(l, i){
   if (isPlaceholder(l.driveLink)) return "";
-  const id = driveId(l.driveLink);
+  const pv = previewUrl(l.driveLink);
   const open = `<a class="btn btn-ghost btn-sm" href="${esc(l.driveLink)}" target="_blank" rel="noopener">Open in Drive ↗</a>`;
-  const view = id ? `<button class="btn btn-primary btn-sm" onclick="openLog(${i})">📄 Daily report</button>` : "";
+  const view = pv ? `<button class="btn btn-primary btn-sm" onclick="openLog(${i})">📄 Daily report</button>` : "";
   return `<div class="log-actions">${view}${open}</div>`;
 }
 function renderLogs(){
   const logs = visibleLogs();
   $("#logCount").textContent = THERAPY_LOGS.length
-    ? `${THERAPY_LOGS.length} session${THERAPY_LOGS.length>1?"s":""} on file` : "";
+    ? `${THERAPY_LOGS.length} session${THERAPY_LOGS.length>1?"s":""} on file · one entry = one combined session (ABA + OT + ST)` : "";
   if (!THERAPY_LOGS.length){
-    $("#logTimeline").innerHTML = `<div class="empty"><b>No sessions logged yet.</b><br>
-      Add your first session under <b>STEP 3</b> in this file — see "How to edit" below.</div>`;
+    $("#logTimeline").innerHTML = `<div class="empty"><b>No sessions logged here yet.</b><br>
+      Day-to-day detail lives in the Therapy Tracker sheet above — add highlight entries under
+      <b>STEP 3</b> in this file if you also want them on this page.</div>`;
     return;
   }
   if (!logs.length){
-    $("#logTimeline").innerHTML = `<div class="empty">Nothing matches this filter or search.</div>`;
+    $("#logTimeline").innerHTML = `<div class="empty">Nothing matches this search.</div>`;
     return;
   }
   const perMonth = {};
@@ -773,15 +805,18 @@ function renderLogs(){
       lastMonth = mk;
     }
     const idx = THERAPY_LOGS.indexOf(l);
-    const meta = [l.centre, l.therapist, l.duration].filter(Boolean).join(" · ");
+    const when = fmtDate(l.date) + (l.duration ? " · " + l.duration : "");
+    const meta = [l.centre, l.therapist].filter(Boolean).join(" · ");
     html += `<article class="log">
       <div class="log-top">
-        <span class="badge ${TYPE_CLASS[l.therapy] || "t-other"}">${esc(l.therapy || "Other")}</span>
-        <span class="rec-date">${fmtDate(l.date)}</span>
+        <span class="rec-date">${esc(when)}</span>
         <span class="meta">${esc(meta)}</span>
       </div>
-      ${l.focus ? `<p class="focus">${esc(l.focus)}</p>` : ""}
-      ${l.progress ? `<p class="prog">${esc(l.progress)}</p>` : ""}
+      ${statBadges(l)}
+      ${l.skills ? `<p class="focus"><b>Worked on:</b> ${esc(l.skills)}</p>` : ""}
+      ${l.words ? `<p class="words">🗣 <b>Words used:</b> ${esc(l.words)}</p>` : ""}
+      ${l.therapistNote ? `<p class="prog"><b>Therapist:</b> ${esc(l.therapistNote)}</p>` : ""}
+      ${l.parentNote ? `<p class="pnote"><b>Parent:</b> ${esc(l.parentNote)}</p>` : ""}
       ${logButtons(l, idx)}
     </article>`;
   });
@@ -793,7 +828,7 @@ $("#search").addEventListener("input",    e => { state.q = e.target.value;    re
 $("#logSearch").addEventListener("input", e => { logState.q = e.target.value; renderLogs(); });
 renderHeader(); renderCards();
 renderTabs(); renderTimeline();
-renderLogTabs(); renderLogs();
+renderTracker(); renderLogs();
 </script>
 </body>
 </html>
