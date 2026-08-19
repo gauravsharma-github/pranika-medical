@@ -1,46 +1,92 @@
 <!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════════
+  CHILD MEDICAL RECORDS - a private, single-file webpage
+  ════════════════════════════════════════════════════════════════════════
+
+  WHAT THIS IS
+  One HTML file that shows a child's medical summary, medical history
+  (with PDF links from Google Drive), and daily therapy sessions
+  (with a link to the Therapy Tracker Google Sheet).
+  There is no server and no database - everything lives in this one file.
+
+  HOW THIS FILE IS ORGANISED (top to bottom)
+    1. <head>   - page setup: the fonts it loads and the CSS styles
+                  (CSS = the "look": colours, sizes, spacing).
+    2. <body>   - the page skeleton: mostly EMPTY boxes, each with an
+                  id="...". JavaScript finds these boxes by id and fills
+                  them with your data when the page loads.
+    3. <script> - two parts:
+                  (a) YOUR DATA - the STEP 1 / 2 / 3 blocks you edit.
+                  (b) the rendering code that draws that data on screen.
+                      You never need to touch part (b).
+
+  HOW TO UPDATE THE PAGE
+  Open this file in a text editor (Notepad, VS Code), edit only the
+  STEP blocks inside <script>, save, then refresh the page in your
+  browser. Full guide: see README.md next to this file.
+
+  PRIVACY
+  This file contains personal medical information. Keep it on your own
+  device or private storage - do not upload it to a public website.
+-->
 <html lang="en">
 <head>
+<!-- Basic page setup: character encoding + mobile scaling -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Medical Records</title>
+<!-- The little stethoscope icon shown in the browser tab -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🩺</text></svg>">
+<!-- Two fonts loaded from Google Fonts:
+     "Bricolage Grotesque" for headings, "IBM Plex Mono" for dates/doses.
+     If there is no internet, the page still works with fallback fonts. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
+/* ═══════════════════════════════════════════════════════════════════════
+   CSS SECTION - everything about how the page LOOKS.
+   You normally never need to edit this. If you want to re-colour the
+   whole page, change the variables in :root just below - every rule
+   further down reuses them via var(--name).
+   ═══════════════════════════════════════════════════════════════════════ */
+
 /* ─────────────────────────────────────────────
    THEME · "the family health file"
    red marks difficult days only,
    mono type marks clinical data (dates, doses)
    ───────────────────────────────────────────── */
 :root{
-  --paper:      #F2F5F3;
-  --card:       #FFFFFF;
-  --ink:        #1C2B27;
-  --muted:      #5F6F69;
-  --line:       #D8E0DB;
-  --green:      #177E63;
-  --green-wash: #E3F1EB;
-  --red:        #C03A2B;
-  --red-wash:   #FAEBE8;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+  /* Named colours - change once here, updates everywhere */
+  --paper:      #F2F5F3;   /* page background (pale green-grey)          */
+  --card:       #FFFFFF;   /* card background                            */
+  --ink:        #1C2B27;   /* main text colour (near-black green)        */
+  --muted:      #5F6F69;   /* secondary/grey text                        */
+  --line:       #D8E0DB;   /* borders and divider lines                  */
+  --green:      #177E63;   /* main accent (buttons, links, highlights)   */
+  --green-wash: #E3F1EB;   /* soft green background                      */
+  --red:        #C03A2B;   /* used ONLY for difficult-day highlights     */
+  --red-wash:   #FAEBE8;   /* soft red background                        */
+  /* Named font stacks (first available font is used) */
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;  /* headings */
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;     /* normal text */
+  --mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;      /* dates, doses */
 }
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
+*{box-sizing:border-box}          /* makes width calculations predictable */
+html{scroll-behavior:smooth}      /* smooth scrolling for the "How to edit" link */
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:var(--body); font-size:15.5px; line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }
-.wrap{max-width:960px; margin:0 auto; padding:36px 20px 90px}
+.wrap{max-width:960px; margin:0 auto; padding:36px 20px 90px}  /* centred page column */
 a{color:var(--green)}
-:focus-visible{outline:2px solid var(--green); outline-offset:2px; border-radius:4px}
+:focus-visible{outline:2px solid var(--green); outline-offset:2px; border-radius:4px}  /* keyboard focus ring */
 
-/* ── patient header, styled like a record card ── */
+/* ── patient header, styled like a record card ──
+   The big card at the top: child's name + ruled rows (born / blood group). */
 .eyebrow{
   font-family:var(--mono); font-size:11.5px; letter-spacing:.18em;
   text-transform:uppercase; color:var(--green); margin-bottom:6px;
@@ -52,19 +98,21 @@ a{color:var(--green)}
 }
 .patient-top{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap}
 h1{
-  font-family:var(--display); font-weight:800; font-size:clamp(30px,5.5vw,44px);
+  font-family:var(--display); font-weight:800; font-size:clamp(30px,5.5vw,44px);  /* shrinks on small screens */
   line-height:1.05; margin:0 0 4px; letter-spacing:-.01em;
 }
 .header-actions{display:flex; gap:8px; flex-wrap:wrap}
 .ruled{margin-top:18px}
-.ruled-row{
+.ruled-row{                       /* one "line" of the record card, e.g. Born | date */
   display:flex; justify-content:space-between; align-items:baseline; gap:16px;
   padding:11px 2px; border-top:1px solid var(--line);
 }
-.ruled-row .k{font-size:13px; color:var(--muted)}
-.ruled-row .v{font-family:var(--mono); font-size:14px; font-weight:500; text-align:right}
+.ruled-row .k{font-size:13px; color:var(--muted)}                                  /* label side  */
+.ruled-row .v{font-family:var(--mono); font-size:14px; font-weight:500; text-align:right}  /* value side */
 
-/* ── info cards ── */
+/* ── info cards ──
+   The row of cards under the header: conditions, medications, care team.
+   grid auto-fit = cards sit side by side and stack on narrow screens. */
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin:18px 0 8px}
 .card{
   background:var(--card); border:1px solid var(--line); border-radius:16px;
@@ -76,14 +124,16 @@ h1{
 }
 .card ul{margin:0; padding-left:18px}
 .card li{margin:5px 0}
-.card .none{color:var(--muted); font-size:14px}
-.med-dose{font-family:var(--mono); font-size:13px; color:var(--muted); display:block}
+.card .none{color:var(--muted); font-size:14px}     /* "None recorded" style */
+.med-dose{font-family:var(--mono); font-size:13px; color:var(--muted); display:block}  /* dose line under a medicine */
 .contact{margin:8px 0; font-size:14.5px}
 .contact .who{font-weight:600}
-.contact a{font-family:var(--mono); font-size:13.5px; text-decoration:none}
+.contact a{font-family:var(--mono); font-size:13.5px; text-decoration:none}  /* tappable phone numbers */
 .notes-card p{margin:0; font-size:14.5px}
 
-/* ── record folders (history + therapy logs) ── */
+/* ── record folders (history + therapy logs) ──
+   Shared styles for the two big sections. The tabs are drawn like
+   folder tabs sitting on top of a white "folder" box. */
 .records-head{margin:34px 0 0}
 .records-head h2{
   font-family:var(--display); font-weight:800; font-size:26px; margin:0 0 2px;
@@ -97,8 +147,8 @@ h1{
   transform:translateY(1px); transition:background .15s;
 }
 .tab:hover{background:#F3F6F4}
-.tab.active{background:var(--card); font-weight:600; color:var(--green)}
-.tab .n{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:4px}
+.tab.active{background:var(--card); font-weight:600; color:var(--green)}  /* selected tab */
+.tab .n{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:4px}  /* small count next to tab name */
 .folder{
   background:var(--card); border:1px solid var(--line); border-radius:16px;
   padding:18px 20px 24px; box-shadow:0 1px 2px rgba(28,43,39,.05);
@@ -109,22 +159,22 @@ h1{
   color:var(--ink); margin-bottom:6px;
 }
 .search::placeholder{color:var(--muted)}
-.yearhead{
+.yearhead{                        /* the "2026 ────" / "August 2026 ────" divider lines */
   font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; color:var(--muted);
   display:flex; align-items:center; gap:12px; margin:22px 0 10px;
 }
-.yearhead::after{content:""; flex:1; height:1px; background:var(--line)}
-.rec{
+.yearhead::after{content:""; flex:1; height:1px; background:var(--line)}  /* the long line after the year */
+.rec{                             /* one medical-history record card */
   border:1px solid var(--line); border-radius:12px; padding:15px 16px; margin:10px 0;
   background:#FDFEFD; transition:box-shadow .15s, transform .15s;
 }
-.rec:hover{box-shadow:0 3px 10px rgba(28,43,39,.07); transform:translateY(-1px)}
+.rec:hover{box-shadow:0 3px 10px rgba(28,43,39,.07); transform:translateY(-1px)}  /* gentle lift on hover */
 .rec-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px}
-.badge{
+.badge{                           /* small rounded pill, e.g. "Neurology" or "Mood: Good" */
   font-size:11.5px; font-weight:600; letter-spacing:.02em;
   padding:3px 10px; border-radius:999px; background:var(--green-wash); color:var(--green);
 }
-/* medical history categories */
+/* medical history categories - each category gets its own pill colour */
 .badge.b-vaccination{background:#E3F1EB; color:#177E63}
 .badge.b-visit{background:#E7EDF8; color:#2B4C8C}
 .badge.b-neuro{background:#F7E7EF; color:#8C2B5A}
@@ -133,7 +183,8 @@ h1{
 .badge.b-prescription{background:#EFE9F7; color:#5B3E9E}
 .badge.b-hospital{background:#F8E9E6; color:#A44334}
 .badge.b-other{background:#ECEFEE; color:#5F6F69}
-/* session levels: mood / prompting / behaviour */
+/* session levels - colour-codes Mood and Prompting chips
+   (great = green ... hard/alert = red-ish) */
 .badge.lv-great{background:#E3F1EB; color:#177E63}
 .badge.lv-good{background:#E2F1F5; color:#0E7490}
 .badge.lv-mid{background:#F6EEDD; color:#8A6414}
@@ -141,67 +192,69 @@ h1{
 .badge.lv-alert{background:var(--red-wash); color:var(--red)}
 .rec-date{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
 .rec h3{font-family:var(--display); font-weight:700; font-size:17px; margin:2px 0 3px}
-.rec .by{font-size:13px; color:var(--muted); margin:0 0 7px}
-.rec .sum{font-size:14.5px; margin:0 0 12px}
+.rec .by{font-size:13px; color:var(--muted); margin:0 0 7px}       /* doctor · hospital line */
+.rec .sum{font-size:14.5px; margin:0 0 12px}                       /* record summary text */
 .rec-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-.btn{
+.btn{                             /* shared button style */
   font-family:var(--body); font-size:13.5px; font-weight:600; cursor:pointer;
   border-radius:9px; padding:8px 14px; border:1px solid transparent;
   text-decoration:none; display:inline-flex; align-items:center; gap:6px;
   transition:filter .15s;
 }
 .btn:hover{filter:brightness(.96)}
-.btn-primary{background:var(--green); color:#fff}
-.btn-ghost{background:#fff; color:var(--ink); border-color:var(--line)}
-.btn-sm{padding:5px 11px; font-size:12.5px}
-.nolink{font-size:13px; color:var(--muted); font-style:italic}
-.empty{
+.btn-primary{background:var(--green); color:#fff}                  /* solid green button */
+.btn-ghost{background:#fff; color:var(--ink); border-color:var(--line)}  /* outlined button */
+.btn-sm{padding:5px 11px; font-size:12.5px}                        /* smaller variant */
+.nolink{font-size:13px; color:var(--muted); font-style:italic}     /* "No PDF linked yet" text */
+.empty{                           /* friendly message when a list has nothing to show */
   text-align:center; color:var(--muted); padding:34px 14px; font-size:14.5px;
 }
 .empty b{color:var(--ink)}
 
-/* ── daily therapy session rows ── */
+/* ── daily therapy session rows ──
+   Styles for one session card and everything inside it. */
 .log{
   border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:9px 0;
   background:#FDFEFD;
 }
-.log-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.log-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}   /* date · duration · type badge */
 .log .meta{font-size:12.5px; color:var(--muted)}
-.log-stats{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px}
+.log-stats{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px}  /* Mood / Prompting chips */
 .log .bnote{font-size:12.5px; color:var(--muted)}
-.log .focus{font-size:14px; margin:8px 0 0}
+.log .focus{font-size:14px; margin:8px 0 0}                            /* plain text lines */
 .log .words{
   margin:8px 0 0; font-size:14px; background:var(--green-wash);
   border-radius:8px; padding:6px 10px; display:inline-block;
 }
-.log .prog{
+.log .prog{                       /* therapist note - green left border */
   font-size:13.5px; color:var(--green); margin:7px 0 0;
   padding-left:10px; border-left:3px solid var(--green-wash);
 }
-.log .pnote{
+.log .pnote{                      /* parent note - grey left border */
   font-size:13.5px; color:var(--muted); margin:6px 0 0;
   padding-left:10px; border-left:3px solid var(--line);
 }
-.log .tagrow{display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:8px}
-.taglabel{
+.log .tagrow{display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:8px}  /* a row of chips */
+.taglabel{                        /* the small uppercase label before a chip row */
   font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
   text-transform:uppercase; color:var(--muted); margin-right:3px;
 }
-.tag{
+.tag{                             /* one chip, e.g. one skill or one word */
   font-size:12px; background:#ECEFEE; color:var(--ink);
   border:1px solid var(--line); border-radius:999px; padding:3px 10px;
 }
-.tag.instr{background:#E7EDF8; border-color:#D5DEF2; color:#2B4C8C}
-.tag.word{background:var(--green-wash); border-color:#CBE4DA; color:var(--green); font-weight:600}
-.badge.tt{background:#EFE9F7; color:#5B3E9E}
-.log .behav{
+.tag.instr{background:#E7EDF8; border-color:#D5DEF2; color:#2B4C8C}   /* "Instructions followed" chips - blue */
+.tag.word{background:var(--green-wash); border-color:#CBE4DA; color:var(--green); font-weight:600}  /* "Words used" chips - green, bold */
+.badge.tt{background:#EFE9F7; color:#5B3E9E}                          /* therapy type badge (e.g. ABA) - purple */
+.log .behav{                      /* challenging-behaviour highlight - the only red element */
   display:inline-block; font-size:13.5px; margin:8px 0 0;
   background:var(--red-wash); color:var(--red); border-radius:8px; padding:6px 10px;
 }
-.log .basics{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin:8px 0 0}
+.log .basics{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin:8px 0 0}  /* food / water / bathroom line */
 .log-actions{margin-top:9px; display:flex; gap:8px; flex-wrap:wrap}
 
-/* ── therapy tracker bar (google sheet) ── */
+/* ── therapy tracker bar (google sheet) ──
+   The green banner above the sessions linking to the Google Sheet. */
 .tracker{
   display:flex; gap:10px; align-items:center; flex-wrap:wrap;
   background:var(--green-wash); border:1px solid #CBE4DA; border-radius:12px;
@@ -210,7 +263,7 @@ h1{
 .tracker .tx{flex:1; min-width:230px; font-size:14px}
 
 /* ── how-to & footer ── */
-details.howto{
+details.howto{                    /* the collapsible "How to edit" panel */
   margin-top:26px; background:var(--green-wash); border:1px solid #CBE4DA;
   border-radius:16px; padding:16px 20px;
 }
@@ -230,10 +283,13 @@ footer{
   gap:14px; flex-wrap:wrap;
 }
 
-/* ── document preview modal ── */
+/* ── document preview modal ──
+   The popup that shows a PDF or the Google Sheet inside the page.
+   .overlay is the dark full-screen layer; .sheet is the white window. */
 .overlay{
   position:fixed; inset:0; background:rgba(20,30,27,.6); z-index:50;
-  display:none; align-items:center; justify-content:center; padding:14px;
+  display:none;                   /* hidden until JavaScript adds the "open" class */
+  align-items:center; justify-content:center; padding:14px;
 }
 .overlay.open{display:flex; animation:fade .18s ease}
 @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -247,20 +303,24 @@ footer{
 }
 .sheet-head .t{font-family:var(--display); font-weight:700; font-size:15px; flex:1;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.sheet iframe{flex:1; border:0; width:100%}
+.sheet iframe{flex:1; border:0; width:100%}   /* the embedded Google preview fills the window */
 .sheet-note{font-size:12px; color:var(--muted); padding:8px 16px; border-top:1px solid var(--line)}
 
-/* ── print: clean summary for doctor visits ── */
+/* ── print: clean summary for doctor visits ──
+   When you press "Print summary", these rules hide buttons/search/tabs
+   and print the cards with plain borders. */
 @media print{
   body{background:#fff; font-size:12.5px}
   .no-print, .tabs, .search, .rec-actions, .log-actions, .tracker, details.howto, .header-actions{display:none !important}
   .patient-card, .card, .folder, .rec, .log{box-shadow:none; border-color:#bbb; break-inside:avoid}
   .wrap{padding:0; max-width:100%}
 }
+/* Respect people who turned off animations in their device settings */
 @media (prefers-reduced-motion: reduce){
   *{animation:none !important; transition:none !important}
   html{scroll-behavior:auto}
 }
+/* Small-phone tweak: stack the label/value rows in the header card */
 @media (max-width:520px){
   .ruled-row{flex-direction:column; gap:2px}
   .ruled-row .v{text-align:left}
@@ -268,24 +328,32 @@ footer{
 </style>
 </head>
 <body>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HTML SECTION - the page SKELETON.
+     Most containers below are empty on purpose. Each has an id="...";
+     the JavaScript at the bottom finds them by that id and fills them
+     with your data. Example: renderHeader() fills id="childName".
+     ═══════════════════════════════════════════════════════════════════════ -->
 <div class="wrap">
 
-  <!-- ═══════════ PATIENT HEADER (fills itself from your data below) ═══════════ -->
+  <!-- ═══════════ PATIENT HEADER (filled by renderHeader) ═══════════ -->
   <section class="patient-card">
     <div class="patient-top">
       <div>
         <div class="eyebrow">Patient record</div>
+        <!-- id="childName": JavaScript writes the child's name here -->
         <h1 id="childName">-</h1>
       </div>
-      <div class="header-actions no-print">
+      <div class="header-actions no-print">   <!-- no-print = hidden when printing -->
         <button class="btn btn-ghost" onclick="window.print()">🖨 Print summary</button>
         <a class="btn btn-ghost" href="#howto">✏️ How to edit</a>
       </div>
     </div>
+    <!-- id="ruledRows": Born / Blood group / Height-weight rows go here -->
     <div class="ruled" id="ruledRows"></div>
   </section>
 
-  <!-- ═══════════ KEY INFO CARDS ═══════════ -->
+  <!-- ═══════════ KEY INFO CARDS (filled by renderCards) ═══════════ -->
   <section class="grid">
     <div class="card">
       <h2>🩺 Ongoing conditions</h2>
@@ -300,36 +368,38 @@ footer{
       <div id="contactList"></div>
     </div>
   </section>
+  <!-- The Notes card starts hidden (display:none); JavaScript shows it
+       only if CHILD.notes has text -->
   <section class="card notes-card" id="notesCard" style="display:none; margin-bottom:8px">
     <h2>📝 Notes</h2>
     <p id="notesText"></p>
   </section>
 
-  <!-- ═══════════ MEDICAL HISTORY ═══════════ -->
+  <!-- ═══════════ MEDICAL HISTORY (filled by renderTabs + renderTimeline) ═══════════ -->
   <section class="records-head">
     <h2>Medical history</h2>
-    <p class="sub" id="recCount"></p>
+    <p class="sub" id="recCount"></p>          <!-- "N records on file" -->
   </section>
-  <div class="tabs no-print" id="tabs" role="tablist"></div>
+  <div class="tabs no-print" id="tabs" role="tablist"></div>   <!-- category tabs -->
   <div class="folder">
     <input type="search" class="search no-print" id="search"
            placeholder="Search by illness, doctor, hospital, test…" aria-label="Search records">
-    <div id="timeline"></div>
+    <div id="timeline"></div>                  <!-- the record cards go here -->
   </div>
 
-  <!-- ═══════════ DAILY THERAPY SESSIONS ═══════════ -->
+  <!-- ═══════════ DAILY THERAPY SESSIONS (filled by renderTracker + renderLogs) ═══════════ -->
   <section class="records-head">
     <h2>Daily therapy sessions</h2>
-    <p class="sub" id="logCount"></p>
+    <p class="sub" id="logCount"></p>          <!-- "N sessions on file" -->
   </section>
   <div class="folder">
-    <div id="trackerBar"></div>
+    <div id="trackerBar"></div>                <!-- green Google-Sheet banner goes here -->
     <input type="search" class="search no-print" id="logSearch"
            placeholder="Search sessions - words, skills, notes, mood…" aria-label="Search therapy sessions">
-    <div id="logTimeline"></div>
+    <div id="logTimeline"></div>               <!-- the session cards go here -->
   </div>
 
-  <!-- ═══════════ HOW TO ADD YOUR DATA ═══════════ -->
+  <!-- ═══════════ HOW TO ADD YOUR DATA (static help text, always the same) ═══════════ -->
   <details class="howto" id="howto">
     <summary>How to add your child's details, PDF links &amp; the tracker sheet</summary>
     <ol>
@@ -346,11 +416,15 @@ footer{
 
   <footer>
     <span>🔒 This file contains personal medical information - keep it on your own device or private storage. Don't upload it to a public website.</span>
-    <span id="lastUpdated"></span>
+    <span id="lastUpdated"></span>            <!-- "Last updated ..." from CHILD.lastUpdated -->
   </footer>
 </div>
 
-<!-- ═══════════ DOCUMENT PREVIEW MODAL ═══════════ -->
+<!-- ═══════════ DOCUMENT PREVIEW MODAL ═══════════
+     Hidden popup used for "View PDF", "Daily report" and "Quick view".
+     JavaScript (showDoc) sets the title + iframe address and adds the
+     "open" class to make it visible. Clicking the dark background,
+     the Close button, or pressing Escape closes it (closePdf). -->
 <div class="overlay" id="overlay" onclick="if(event.target===this) closePdf()">
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Document preview">
     <div class="sheet-head">
@@ -358,12 +432,18 @@ footer{
       <a class="btn btn-ghost" id="pdfOpen" href="#" target="_blank" rel="noopener">Open in Drive ↗</a>
       <button class="btn btn-primary" onclick="closePdf()">Close</button>
     </div>
+    <!-- The iframe shows Google's read-only preview page inside this popup -->
     <iframe id="pdfFrame" title="Document preview" allow="fullscreen"></iframe>
     <div class="sheet-note">Preview not loading? Use the open button - you may need to be signed in to a Google account that has access to this file.</div>
   </div>
 </div>
 
 <script>
+/* ═══════════════════════════════════════════════════════════════════════
+   SCRIPT SECTION, PART (a): YOUR DATA.
+   The STEP 1 / 2 / 3 blocks below are the ONLY things you edit.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 /* ╔════════════════════════════════════════════════════════════════════╗
    ║                                                                    ║
    ║   ✏️  STEP 1 - YOUR CHILD'S DETAILS  (edit the values below)       ║
@@ -385,8 +465,13 @@ const CHILD = {
   ],
   conditions: [                       // ongoing conditions, [] if none
     "Expressive Speech Delay",
+    "Developmental Delay",
     "Doesn't Socialize",
     "Behavioral Concerns",
+    "Echolalia",
+    "Limited Spontaneous Communication",
+    "Inconsistent Response to name",
+    "Lack of Pointing",
   ],
   medications: [                      // current regular medicines, [] if none
     { name: "Powder H Peg (laxative)", dose: "", frequency: "0-1-0-0 (for 15 days)" },
@@ -474,6 +559,7 @@ const RECORDS = [
     summary: "Baseline assessment across speech, motor and social skills. Goals set for a 12-week block; speech therapy and OT recommended twice a week. Review assessment scheduled after the block.",
     driveLink: "https://drive.google.com/file/d/1AmYir4g6lrRt0iFuWK-ac_qotmzsJtnH/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
   },
+  /*
   {
     date: "2026-03-18",
     category: "Doctor Visit",
@@ -483,6 +569,7 @@ const RECORDS = [
     summary: "Viral upper respiratory infection. Prescribed paracetamol for 3 days and steam inhalation. Advised review if fever persists beyond 72 hours.",
     driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE
   },
+  */
   /*
   {
     date: "2025-11-05",
@@ -610,37 +697,80 @@ const THERAPY_LOGS = [
    ╚════════════════════════════════════════════════════════════════════╝ */
 
 
-/* ── helpers ─────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   SCRIPT SECTION, PART (b): THE RENDERING CODE.
+   You never need to edit anything below - it just reads the data above
+   and draws it on the page.
+
+   HOW TO READ THIS CODE (a 1-minute primer for non-programmers):
+   • $("#something") finds the HTML element with id="something".
+   • Text inside backticks `like ${this}` is a "template literal":
+     it builds a piece of HTML text with your data dropped into the
+     ${...} slots.
+   • esc(...) makes text SAFE to place inside HTML, so characters like
+     < or & in your notes cannot break the page.
+   • Each render...() function builds HTML for one part of the page and
+     places it there using .innerHTML.
+   • At the very bottom ("boot"), all the render functions run once when
+     the page loads, and the search boxes are wired to re-run them as
+     you type.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── helpers - small reusable utility functions ──────────────────────── */
+
+/* $("#x") - shorthand to find the element with id="x" on the page */
 const $ = s => document.querySelector(s);
+
+/* esc(text) - makes any text safe to insert into HTML by replacing the
+   five special characters (& < > " ') with harmless codes.
+   Also turns null/undefined into "" so nothing ever prints as "null". */
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+/* fmtDate("2026-08-14") → "14 Aug 2026"
+   Turns the YYYY-MM-DD dates you type into a friendly display format.
+   If the text is not a real date, it is shown as-is instead of crashing. */
 function fmtDate(iso){
   if(!iso) return "-";
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(iso + "T00:00:00");   // T00:00:00 = treat as local midnight
   if (isNaN(d)) return esc(iso);
   return d.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
 }
+
+/* monthLabel("2026-08-14") → "August 2026"
+   Used for the month divider lines in the sessions list. */
 function monthLabel(iso){
   const d = new Date(String(iso) + "T00:00:00");
   if (isNaN(d)) return "Undated";
   return d.toLocaleDateString("en-GB", { month:"long", year:"numeric" });
 }
+
+/* ageText("2019-06-15") → e.g. "7 yrs 2 mo"
+   Calculates age from the date of birth, so the header stays correct
+   automatically without you ever updating it. */
 function ageText(dob){
   if(!dob) return "";
-  const b = new Date(dob + "T00:00:00"), n = new Date();
+  const b = new Date(dob + "T00:00:00"), n = new Date();   // b = birth, n = now
   if (isNaN(b)) return "";
-  let y = n.getFullYear() - b.getFullYear();
-  let m = n.getMonth() - b.getMonth();
-  if (n.getDate() < b.getDate()) m--;
-  if (m < 0) { y--; m += 12; }
+  let y = n.getFullYear() - b.getFullYear();   // whole years so far
+  let m = n.getMonth() - b.getMonth();         // month difference
+  if (n.getDate() < b.getDate()) m--;          // birthday day not reached this month yet
+  if (m < 0) { y--; m += 12; }                 // borrow 12 months if negative
   return y > 0 ? `${y} yr${y>1?"s":""} ${m} mo` : `${m} months`;
 }
+
+/* driveId(link) - pulls the long file ID out of any normal Google
+   Drive / Docs / Sheets share link. Returns null if no ID is found.
+   Example: ".../file/d/1AbC123.../view" → "1AbC123..." */
 function driveId(link){
   if(!link) return null;
   const m = link.match(/\/(?:file\/)?d\/([\w-]{10,})/) || link.match(/[?&]id=([\w-]{10,})/);
   return m ? m[1] : null;
 }
+
+/* previewUrl(link) - converts a share link into Google's read-only
+   "/preview" address, which is the version that can be embedded in the
+   popup. Works for Drive files (PDFs), Sheets, Docs and Slides. */
 function previewUrl(link){
   const id = driveId(link); if (!id) return null;
   if (/docs\.google\.com\/spreadsheets/.test(link)) return `https://docs.google.com/spreadsheets/d/${id}/preview`;
@@ -648,15 +778,28 @@ function previewUrl(link){
   if (/docs\.google\.com\/presentation/.test(link)) return `https://docs.google.com/presentation/d/${id}/preview`;
   return `https://drive.google.com/file/d/${id}/preview`;
 }
+
+/* isPlaceholder(link) - true when a link is empty or still contains the
+   word "PASTE" (i.e. you have not replaced the placeholder yet).
+   Used to hide View/Open buttons for records without a real link. */
 const isPlaceholder = link => !link || /PASTE/i.test(link);
 
+/* Which pill colour each medical-history category uses (see the
+   .badge.b-... rules in the CSS section). */
 const CAT_CLASS = {
   "Vaccination":"b-vaccination", "Doctor Visit":"b-visit", "Neurology":"b-neuro",
   "Therapy Assessment":"b-assessment", "Lab Report":"b-lab",
   "Prescription":"b-prescription", "Hospitalization":"b-hospital", "Other":"b-other",
 };
+
+/* The order the category tabs appear in. Tabs with zero records are
+   hidden automatically by renderTabs(). */
 const CATEGORIES = ["All","Vaccination","Doctor Visit","Neurology","Therapy Assessment",
                     "Lab Report","Prescription","Hospitalization","Other"];
+
+/* lvClass(field, value) - picks the colour class for a Mood or
+   Prompting chip. Example: lvClass("mood","Very good") → "lv-great".
+   "behaviour" has its own scale where "Moderate" counts as harder. */
 function lvClass(field, v){
   const s = String(v || "").toLowerCase();
   if (field === "behaviour"){
@@ -665,35 +808,53 @@ function lvClass(field, v){
   return {"very good":"lv-great", good:"lv-good", okay:"lv-mid", difficult:"lv-hard",
           none:"lv-great", minimal:"lv-good", moderate:"lv-mid", "a lot":"lv-hard"}[s] || "b-other";
 }
-const state    = { cat:"All", q:"" };
-const logState = { q:"" };
+
+/* The page's current "state": which tab is selected and what has been
+   typed in each search box. Changing these + re-rendering = filtering. */
+const state    = { cat:"All", q:"" };   // medical history: selected tab + search text
+const logState = { q:"" };              // sessions: search text
 
 /* ── header & info cards ─────────────────────────────────────────────── */
+
+/* renderHeader() - fills the big patient card at the top:
+   the name, and the ruled rows (Born + age, Blood group, Height/weight). */
 function renderHeader(){
   $("#childName").textContent = CHILD.name || "Add your child's name";
-  document.title = "Medical Records - " + (CHILD.name || "");
-  const rows = [];
+  document.title = "Medical Records - " + (CHILD.name || "");   // browser tab title
+  const rows = [];                                              // [label, value] pairs
   rows.push(["Born", `${fmtDate(CHILD.dob)} · ${ageText(CHILD.dob)}`]);
   if (CHILD.bloodGroup) rows.push(["Blood group", CHILD.bloodGroup]);
   if (CHILD.heightCm || CHILD.weightKg){
     const g = [CHILD.heightCm && CHILD.heightCm + " cm", CHILD.weightKg && CHILD.weightKg + " kg"]
-      .filter(Boolean).join(" · ");
+      .filter(Boolean).join(" · ");     // filter(Boolean) drops empty values
     rows.push(["Height / weight (latest)", g]);
   }
+  // Turn each [label, value] pair into one ruled row of HTML
   $("#ruledRows").innerHTML = rows.map(([k,v]) =>
     `<div class="ruled-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
 }
+
+/* listOrNone(element, items, howToDrawOneItem, textWhenEmpty)
+   - draws a bullet list, or a friendly "None recorded" message when the
+     list is empty. Used for the conditions and medications cards. */
 function listOrNone(el, items, mapFn, noneText){
   el.innerHTML = (items && items.length)
     ? `<ul>${items.map(mapFn).join("")}</ul>`
     : `<p class="none">${noneText}</p>`;
 }
+
+/* contactBlock(name, subline, phone) - builds one contact entry:
+   bold name, grey role/clinic line, and a tappable phone number. */
 function contactBlock(who, subline, phone){
   const tel = phone
     ? `<a href="tel:${esc(String(phone).replace(/\s/g,""))}">${esc(phone)}</a>` : "";
   return `<div class="contact"><span class="who">${esc(who)}</span><br>
     <span style="font-size:13px;color:var(--muted)">${esc(subline)}</span><br>${tel}</div>`;
 }
+
+/* renderCards() - fills the info cards: conditions, medications,
+   care team & emergency contacts, the optional Notes card, and the
+   "Last updated" text in the footer. */
 function renderCards(){
   listOrNone($("#conditionList"), CHILD.conditions,
     c => `<li>${esc(c)}</li>`, "None recorded ✓");
@@ -701,6 +862,7 @@ function renderCards(){
     m => `<li>${esc(m.name)}<span class="med-dose">${esc([m.dose, m.frequency].filter(Boolean).join(" · "))}</span></li>`,
     "No regular medicines ✓");
 
+  // Care team card: pediatrician first, then careTeam, then emergency contacts
   let html = "";
   const p = CHILD.pediatrician || {};
   if (p.name) html += contactBlock(p.name, p.clinic || "Pediatrician", p.phone);
@@ -714,55 +876,83 @@ function renderCards(){
   });
   $("#contactList").innerHTML = html || `<p class="none">Add your care team &amp; contacts in Step 1</p>`;
 
+  // The Notes card only appears if CHILD.notes has text
   if (CHILD.notes){ $("#notesCard").style.display = ""; $("#notesText").textContent = CHILD.notes; }
   $("#lastUpdated").textContent = CHILD.lastUpdated ? "Last updated " + CHILD.lastUpdated : "";
 }
 
 /* ── shared document preview modal ───────────────────────────────────── */
+
+/* showDoc(title, link, openLabel) - opens the popup and loads Google's
+   read-only preview of the given link into the iframe. Used by all
+   three buttons: View PDF, Daily report, and the tracker's Quick view. */
 function showDoc(title, link, openLabel){
-  const pv = previewUrl(link); if (!pv) return;
+  const pv = previewUrl(link); if (!pv) return;      // no valid ID → do nothing
   $("#pdfTitle").textContent = title;
-  $("#pdfOpen").href = link;
+  $("#pdfOpen").href = link;                          // "Open ..." button uses the original link
   $("#pdfOpen").textContent = openLabel || "Open in Drive ↗";
-  $("#pdfFrame").src = pv;
-  $("#overlay").classList.add("open");
-  document.body.style.overflow = "hidden";
+  $("#pdfFrame").src = pv;                            // load the preview into the iframe
+  $("#overlay").classList.add("open");                // make the popup visible
+  document.body.style.overflow = "hidden";            // stop the page behind from scrolling
 }
+/* Three small wrappers so buttons can open the right document by index */
 function openPdf(i){ const r = RECORDS[i];      if (r) showDoc(r.title, r.driveLink); }
 function openLog(i){ const l = THERAPY_LOGS[i]; if (l) showDoc("Daily report - " + fmtDate(l.date), l.driveLink); }
 function openTracker(){ showDoc(TRACKER.label || "Therapy Tracker", TRACKER.sheetLink, "Open in Google Sheets ↗"); }
+
+/* closePdf() - hides the popup and empties the iframe */
 function closePdf(){
   $("#overlay").classList.remove("open");
   $("#pdfFrame").src = "about:blank";
   document.body.style.overflow = "";
 }
+/* Pressing the Escape key also closes the popup */
 document.addEventListener("keydown", e => { if (e.key === "Escape") closePdf(); });
 
 /* ── medical history timeline ────────────────────────────────────────── */
+
+/* counts() - how many records exist per category, e.g.
+   { All: 3, "Doctor Visit": 1, Neurology: 1, ... }
+   Used for the little numbers on the tabs. */
 function counts(){
   const c = { All: RECORDS.length };
   RECORDS.forEach(r => c[r.category] = (c[r.category] || 0) + 1);
   return c;
 }
+
+/* renderTabs() - draws the category tabs. Categories with zero records
+   are skipped, so tabs appear/disappear automatically as you add data. */
 function renderTabs(){
   const c = counts();
   $("#tabs").innerHTML = CATEGORIES
-    .filter(cat => cat === "All" || c[cat])
+    .filter(cat => cat === "All" || c[cat])         // keep "All" + non-empty categories
     .map(cat => `<button class="tab ${state.cat===cat?"active":""}" role="tab"
         aria-selected="${state.cat===cat}" onclick="setCat('${cat}')">
         ${esc(cat)}<span class="n">${c[cat] || 0}</span></button>`).join("");
 }
+/* setCat("Neurology") - runs when a tab is clicked: remember the choice,
+   redraw the tabs (to move the highlight) and redraw the list. */
 function setCat(cat){ state.cat = cat; renderTabs(); renderTimeline(); }
 
+/* visibleRecords() - the records that should be shown right now:
+   1) keep only the selected category (unless "All"),
+   2) keep only records containing the search text,
+   3) sort newest first (dates are YYYY-MM-DD, so plain text
+      comparison sorts correctly). */
 function visibleRecords(){
   const q = state.q.trim().toLowerCase();
   return RECORDS
     .filter(r => (state.cat === "All" || r.category === state.cat))
     .filter(r => !q || [r.title, r.summary, r.doctor, r.facility, r.category, r.date]
       .join(" ").toLowerCase().includes(q))
-    .slice()
+    .slice()                                        // copy, so sorting never reorders your data
     .sort((a,b) => String(b.date).localeCompare(String(a.date)));
 }
+
+/* actionButtons(record, index) - the buttons under one record:
+   - placeholder link  → grey "No PDF linked yet" note
+   - valid Drive link  → "View PDF" (popup) + "Open in Drive" (new tab)
+   - other link        → only "Open in Drive" */
 function actionButtons(r, i){
   if (isPlaceholder(r.driveLink))
     return `<span class="nolink">No PDF linked yet - see "How to edit" below</span>`;
@@ -772,24 +962,28 @@ function actionButtons(r, i){
     ? `<button class="btn btn-primary" onclick="openPdf(${i})">📄 View PDF</button>${open}`
     : open;
 }
+
+/* renderTimeline() - draws the medical-history list:
+   the "N records on file" line, a year divider whenever the year
+   changes, and one card per visible record. */
 function renderTimeline(){
   const recs = visibleRecords();
   $("#recCount").textContent = RECORDS.length
     ? `${RECORDS.length} record${RECORDS.length>1?"s":""} on file` : "";
-  if (!RECORDS.length){
+  if (!RECORDS.length){                              // no data at all yet
     $("#timeline").innerHTML = `<div class="empty"><b>No records yet.</b><br>
       Open this file in a text editor and add your first entry under <b>STEP 2</b> - see "How to edit" below.</div>`;
     return;
   }
-  if (!recs.length){
+  if (!recs.length){                                 // data exists, but filter/search matches nothing
     $("#timeline").innerHTML = `<div class="empty">Nothing matches this filter or search.</div>`;
     return;
   }
   let html = "", lastYear = "";
   recs.forEach(r => {
-    const year = String(r.date || "").slice(0,4) || "Undated";
+    const year = String(r.date || "").slice(0,4) || "Undated";   // "2026-08-17" → "2026"
     if (year !== lastYear){ html += `<div class="yearhead">${esc(year)}</div>`; lastYear = year; }
-    const idx = RECORDS.indexOf(r);
+    const idx = RECORDS.indexOf(r);                  // position in the original list (for the buttons)
     html += `<article class="rec">
       <div class="rec-top">
         <span class="badge ${CAT_CLASS[r.category] || "b-other"}">${esc(r.category || "Other")}</span>
@@ -805,6 +999,11 @@ function renderTimeline(){
 }
 
 /* ── therapy tracker bar (google sheet) ──────────────────────────────── */
+
+/* renderTracker() - draws the green banner above the sessions.
+   If TRACKER.sheetLink is still the placeholder, it shows a hint about
+   where to paste the link; once a real link is pasted it shows the
+   "Quick view" and "Open sheet" buttons. */
 function renderTracker(){
   const el = $("#trackerBar");
   const link = (typeof TRACKER !== "undefined" && TRACKER.sheetLink) || "";
@@ -824,9 +1023,18 @@ function renderTracker(){
 }
 
 /* ── daily therapy sessions ──────────────────────────────────────────── */
+
+/* asText(value) - turns any field into searchable text:
+   a list like ["a","b"] becomes "a, b"; null becomes "". */
 const asText = v => v == null ? "" : (Array.isArray(v) ? v.join(", ") : String(v));
+
+/* nl2br(text) - makes the text HTML-safe, then turns the \n line breaks
+   in your notes into real line breaks (<br>) on screen. */
 const nl2br  = s => esc(s).replace(/\n/g, "<br>");
 
+/* visibleLogs() - like visibleRecords(), but for sessions:
+   keep entries matching the search text (it looks inside every field,
+   including the word/skill lists), then sort newest first. */
 function visibleLogs(){
   const q = logState.q.trim().toLowerCase();
   return THERAPY_LOGS
@@ -837,22 +1045,34 @@ function visibleLogs(){
     .slice()
     .sort((a,b) => String(b.date).localeCompare(String(a.date)));
 }
+
+/* tagRowOrText(label, value, chipStyle) - the flexible renderer for
+   skills / instructions / words:
+   - value is a LIST  → a labelled row of chips (one chip per item)
+   - value is TEXT    → a normal bold-labelled paragraph
+   - value is null/"" → nothing at all */
 function tagRowOrText(label, val, cls){
   if (val == null || val === "") return "";
   if (Array.isArray(val)){
-    const items = val.filter(Boolean);
+    const items = val.filter(Boolean);               // drop any empty items
     if (!items.length) return "";
     return `<div class="tagrow"><span class="taglabel">${label}</span>` +
            items.map(t => `<span class="tag ${cls}">${esc(t)}</span>`).join("") + `</div>`;
   }
   return `<p class="focus"><b>${label}:</b> ${esc(val)}</p>`;
 }
+
+/* statBadges(session) - the coloured Mood / Prompting chips.
+   Fields that are null are skipped (null = not recorded that day). */
 function statBadges(l){
   const parts = [];
   if (l.mood)            parts.push(`<span class="badge ${lvClass("mood", l.mood)}">Mood: ${esc(l.mood)}</span>`);
   if (l.promptingNeeded) parts.push(`<span class="badge ${lvClass("prompting", l.promptingNeeded)}">Prompting: ${esc(l.promptingNeeded)}</span>`);
   return parts.length ? `<div class="log-stats">${parts.join("")}</div>` : "";
 }
+
+/* basicsLine(session) - one compact grey line for the basic needs:
+   food, water and bathroom. Only the filled-in parts appear. */
 function basicsLine(l){
   const parts = [];
   if (l.foodSnack) parts.push(`🍎 Food ${esc(l.foodSnack)}`);
@@ -860,6 +1080,9 @@ function basicsLine(l){
   if (l.bathroom)  parts.push(`🚻 ${esc(l.bathroom)}`);
   return parts.length ? `<p class="basics">${parts.join("&nbsp; · &nbsp;")}</p>` : "";
 }
+
+/* logButtons(session, index) - the optional "Daily report" buttons.
+   Only shown when a session has a real driveLink. */
 function logButtons(l, i){
   if (isPlaceholder(l.driveLink)) return "";
   const pv = previewUrl(l.driveLink);
@@ -867,6 +1090,12 @@ function logButtons(l, i){
   const view = pv ? `<button class="btn btn-primary btn-sm" onclick="openLog(${i})">📄 Daily report</button>` : "";
   return `<div class="log-actions">${view}${open}</div>`;
 }
+
+/* renderLogs() - draws the sessions list:
+   the "N sessions on file" line, a month divider with a session count
+   whenever the month changes, and one card per visible session.
+   Inside each card, every line is optional - fields that are null or ""
+   simply produce no HTML. */
 function renderLogs(){
   const logs = visibleLogs();
   $("#logCount").textContent = THERAPY_LOGS.length
@@ -881,12 +1110,13 @@ function renderLogs(){
     $("#logTimeline").innerHTML = `<div class="empty">Nothing matches this search.</div>`;
     return;
   }
+  // Count sessions per month first, so the divider can say "· 2 sessions"
   const perMonth = {};
   logs.forEach(l => { const k = monthLabel(l.date); perMonth[k] = (perMonth[k] || 0) + 1; });
   let html = "", lastMonth = "";
   logs.forEach(l => {
     const mk = monthLabel(l.date);
-    if (mk !== lastMonth){
+    if (mk !== lastMonth){                            // month changed → add a divider
       html += `<div class="yearhead">${esc(mk)} · ${perMonth[mk]} session${perMonth[mk]>1?"s":""}</div>`;
       lastMonth = mk;
     }
@@ -912,9 +1142,12 @@ function renderLogs(){
   $("#logTimeline").innerHTML = html;
 }
 
-/* ── boot ────────────────────────────────────────────────────────────── */
+/* ── boot - runs once when the page loads ────────────────────────────── */
+/* Wire the two search boxes: every keystroke updates the state and
+   redraws the matching list. */
 $("#search").addEventListener("input",    e => { state.q = e.target.value;    renderTimeline(); });
 $("#logSearch").addEventListener("input", e => { logState.q = e.target.value; renderLogs(); });
+/* Draw everything once with the data from the STEP blocks above. */
 renderHeader(); renderCards();
 renderTabs(); renderTimeline();
 renderTracker(); renderLogs();
