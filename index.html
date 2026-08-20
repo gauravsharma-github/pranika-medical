@@ -190,10 +190,28 @@ h1{
 .badge.lv-mid{background:#F6EEDD; color:#8A6414}
 .badge.lv-hard{background:#F8E9E6; color:#A44334}
 .badge.lv-alert{background:var(--red-wash); color:var(--red)}
+/* record status - is that treatment / consultation still going on?
+   (colours the optional "status" tag on a medical-history record) */
+.badge.st-ongoing{background:#E3F1EB; color:#177E63}    /* green - undergoing now         */
+.badge.st-planned{background:#E2F1F5; color:#0E7490}    /* cyan  - scheduled, not started */
+.badge.st-onhold{background:#F6EEDD; color:#8A6414}     /* amber - paused for now         */
+.badge.st-completed{background:#E7EDF8; color:#2B4C8C}  /* blue  - course finished        */
+.badge.st-stopped{background:#F8E9E6; color:#A44334}    /* red   - discontinued           */
 .rec-date{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
 .rec h3{font-family:var(--display); font-weight:700; font-size:17px; margin:2px 0 3px}
 .rec .by{font-size:13px; color:var(--muted); margin:0 0 7px}       /* doctor · hospital line */
 .rec .sum{font-size:14.5px; margin:0 0 12px}                       /* record summary text */
+.rec .stnote{                     /* status explanation line under the summary */
+  font-size:13.5px; color:var(--muted); margin:-4px 0 12px;
+  padding-left:10px; border-left:3px solid var(--line);
+}
+.rec .stnote b{color:var(--ink)}
+/* the little border of the status line matches the tag colour */
+.rec .stnote.st-ongoing{border-color:#9CCDBE}
+.rec .stnote.st-planned{border-color:#A7D3DE}
+.rec .stnote.st-onhold{border-color:#E4CE9A}
+.rec .stnote.st-completed{border-color:#B7C6E6}
+.rec .stnote.st-stopped{border-color:#E7B8B0}
 .rec-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .btn{                             /* shared button style */
   font-family:var(--body); font-size:13.5px; font-weight:600; cursor:pointer;
@@ -345,6 +363,9 @@ footer{
         <h1 id="childName">-</h1>
       </div>
       <div class="header-actions no-print">   <!-- no-print = hidden when printing -->
+        <!-- "All documents" opens the Google Drive folder from STEP 1
+             (CHILD.driveFolderLink). Hidden until that link is filled in. -->
+        <a class="btn btn-ghost" id="driveFolderBtn" href="#" target="_blank" rel="noopener" style="display:none">📁 All documents ↗</a>
         <button class="btn btn-ghost" onclick="window.print()">🖨 Print summary</button>
         <!-- Disabled How to edit button
          <a class="btn btn-ghost" href="#howto">✏️ How to edit</a> -->
@@ -406,9 +427,9 @@ footer{
     <ol>
       <li>Open <b>this HTML file</b> in any text editor (Notepad, VS Code…). Everything you edit lives in <b>one place</b> - scroll to the banner that says <code>STEP 1 - YOUR CHILD'S DETAILS</code>.</li>
       <li><b>Step 1:</b> fill in the <code>CHILD</code> block - name, date of birth (<code>YYYY-MM-DD</code>), blood group, medications, care team (pediatrician, neurologist, therapy centre) and emergency contacts.</li>
-      <li><b>Step 2 - Medical history:</b> in the <code>RECORDS</code> block, each <code>{ … }</code> is one record. Copy-paste a block to add a new entry. <code>category</code> must be one of: <code>Vaccination</code>, <code>Doctor Visit</code>, <code>Neurology</code>, <code>Therapy Assessment</code>, <code>Lab Report</code>, <code>Prescription</code>, <code>Hospitalization</code>, <code>Other</code>. Tabs appear automatically for categories that have at least one entry.</li>
+      <li><b>Step 2 - Medical history:</b> in the <code>RECORDS</code> block, each <code>{ … }</code> is one record. Copy-paste a block to add a new entry. <code>category</code> must be one of: <code>Vaccination</code>, <code>Doctor Visit</code>, <code>Neurology</code>, <code>Therapy Assessment</code>, <code>Lab Report</code>, <code>Prescription</code>, <code>Hospitalization</code>, <code>Other</code>. Tabs appear automatically for categories that have at least one entry. Each record can also carry a <code>status</code> tag - <code>"Ongoing"</code>, <code>"Planned"</code>, <code>"On hold"</code>, <code>"Completed"</code> or <code>"Stopped"</code> - plus a <code>statusNote</code> with the reason (e.g. why a therapy was stopped or didn't help). Leave both as <code>null</code> on records that don't need them. A record can also carry a <code>documents</code> list for extra named buttons - e.g. <code>documents: [ { label: "Goal setting", driveLink: "https://..." } ]</code> - one button per entry, named by its <code>label</code>.</li>
       <li><b>Step 3 - Therapy Tracker sheet:</b> paste your Google Sheet's link into <code>TRACKER.sheetLink</code> (in Sheets: <b>Share</b> → <b>Copy link</b>). A green bar then appears above the sessions with <b>Quick view</b> (opens the sheet in a popup here) and <b>Open sheet ↗</b>. <b>Sharing:</b> since the sheet holds detailed session data, the safest option is to Share it with specific people (family / therapist email IDs) as <i>Viewer</i> - they'll need to be signed in to Google for Quick view to load. <i>Anyone with the link → Viewer</i> also works and is easier for relatives, but then anyone who gets hold of the link can read it.</li>
-      <li><b>Step 3 - Session entries:</b> in the <code>THERAPY_LOGS</code> block, each <code>{ … }</code> is one session, using the same fields as the sheet's Daily Log tab: <code>date</code> (required), <code>therapyType</code>, <code>sessionDuration</code>, <code>mood</code> (Very good / Good / Okay / Difficult), <code>promptingNeeded</code> (None / Minimal / Moderate / A lot), <code>challengingBehaviour</code> (short text, or <code>null</code>), <code>mainSkillsWorkedOn</code> / <code>instructionsFollowed</code> / <code>communicationWordsUsed</code> (a <code>["list", "of", "items"]</code> shows as chips; a plain <code>"sentence"</code> shows as text), <code>foodSnack</code>, <code>water</code>, <code>bathroom</code>, <code>otherActivities</code>, and <code>therapistNotes</code> / <code>parentNotes</code> (use <code>\n</code> inside the text for line breaks). Any field set to <code>null</code> or <code>""</code> is hidden on the page. You can also add an optional <code>driveLink</code> to any entry to attach a daily report PDF.</li>
+      <li><b>Step 3 - Session entries:</b> in the <code>THERAPY_LOGS</code> block, each <code>{ … }</code> is one session, using the same fields as the sheet's Daily Log tab: <code>date</code> (required), <code>therapyType</code>, <code>sessionDuration</code>, <code>mood</code> (Very good / Good / Okay / Difficult), <code>promptingNeeded</code> (None / Minimal / Moderate / A lot), <code>challengingBehaviour</code> (short text, or <code>null</code>), <code>mainSkillsWorkedOn</code> / <code>instructionsFollowed</code> / <code>communicationWordsUsed</code> (a <code>["list", "of", "items"]</code> shows as chips; a plain <code>"sentence"</code> shows as text), <code>foodSnack</code>, <code>water</code>, <code>bathroom</code>, <code>otherActivities</code>, and <code>therapistNotes</code> / <code>parentNotes</code> (use <code>\n</code> inside the text for line breaks). Any field set to <code>null</code> or <code>""</code> is hidden on the page. You can also add an optional <code>driveLink</code> to any entry to attach a daily report PDF, and the same optional <code>documents</code> list as records for extra named buttons.</li>
       <li><b>Google Drive link (records):</b> in Drive, right-click the PDF → <b>Share</b> → <b>Copy link</b>, then paste it into the record's <code>driveLink</code> line, replacing <code>PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE</code> (keep the quotes).</li>
       <li><b>PDF sharing setting:</b> if only you will open this page while signed in to your own Google account, "Restricted" is fine. If family members should view the PDFs too, share those files the same way as the sheet.</li>
       <li>Save the file and refresh this page in your browser - done.</li>
@@ -452,6 +473,10 @@ footer{
    ║                                                                    ║
    ║   This is the ONLY part of the file you need to touch.             ║
    ║   Keep the quotes and commas exactly as they are.                  ║
+   ║                                                                    ║
+   ║   driveFolderLink: paste the Google Drive FOLDER that holds all    ║
+   ║   the documents - an "All documents ↗" button then appears in      ║
+   ║   the page header, next to Print summary.                          ║
    ║                                                                    ║
    ╚════════════════════════════════════════════════════════════════════╝ */
 
@@ -501,6 +526,7 @@ const CHILD = {
 
   notes: "",                          // anything a doctor should know at a glance ("" to hide the card)
   lastUpdated: "17 Aug 2026",         // update this whenever you edit the file
+  driveFolderLink: "https://drive.google.com/drive/folders/1mYjb4OR_uXtW4uqQJyEQ2MFmZbX0oT1Z?usp=drive_link",   // 👈 the Drive FOLDER with all documents - shows the "All documents" button in the header
 };
 
 /* ╔════════════════════════════════════════════════════════════════════╗
@@ -517,6 +543,25 @@ const CHILD = {
    ║   • "Therapy Assessment" → assessments / reviews / goal-setting    ║
    ║                            reports from the therapy centre         ║
    ║                                                                    ║
+   ║   • status (optional): is that treatment still going on?           ║
+   ║     "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped"    ║
+   ║     Shows as a colour-coded tag next to the date.                  ║
+   ║   • statusNote (optional): the reason / short story - e.g. why     ║
+   ║     it was stopped, or why it did not work well.                   ║
+   ║   • Leave both as null on records that do not need them            ║
+   ║     (vaccinations, one-off lab reports...).                        ║
+   ║                                                                    ║
+   ║   • documents (optional): EXTRA named buttons on a record, for     ║
+   ║     things like a goal-setting discussion or a status report:      ║
+   ║                                                                    ║
+   ║       documents: [                                                 ║
+   ║         { label: "Goal setting", driveLink: "https://..." },       ║
+   ║         { label: "Status report", driveLink: "https://..." },      ║
+   ║       ],                                                           ║
+   ║                                                                    ║
+   ║     One button per line; the label is the button text. Leave the   ║
+   ║     whole field out (or null) on records that do not need it.      ║
+   ║                                                                    ║
    ║   👉 driveLink: paste your Google Drive share link there           ║
    ║      (Drive → right-click the PDF → Share → Copy link)             ║
    ║                                                                    ║
@@ -526,16 +571,24 @@ const RECORDS = [
   {
     date: "2026-08-18",
     category: "Doctor Visit",
+    status: "Ongoing",        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: "Observing for a week",    // the reason / short explanation - or null
     title: "Consultation for Crankyness",
     doctor: "Dr. Chandrashekhar T.",
     facility: "Janani Clinic, Bengaluru",
     summary: "Suspected stomach pain. Prescribed laxative, probiotics, and pain killers. Advised to observe for a week's time.",
     driveLink: "PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE",   // 👈 YOUR DRIVE LINK GOES HERE
+    documents: [
+      //{ label: "Goal setting discussion", driveLink: "https://..." },
+      //{ label: "Status report", driveLink: "https://..." },
+    ],
   },
   /*
   {
     date: "2025-07-02",               // YYYY-MM-DD
     category: "Vaccination",
+    status: null,        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: null,    // the reason / short explanation - or null
     title: "Typhoid booster (TCV)",
     doctor: "Dr. Sample Name",
     facility: "Sample Children's Clinic",
@@ -546,25 +599,69 @@ const RECORDS = [
   {
     date: "2026-06-09",
     category: "Neurology",
+    status: "Completed",        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: "Follow up appointment on 24-Aug-2026",    // the reason / short explanation - or null
     title: "Pediatric neurologist",
     doctor: "Dr. Usha Mallinath",
     facility: "Manipal Hospital Whitefield, Bangalore",
-    summary: "First Consultation. Initial screening done; advised aggressive ABA, ST and OT Therapy. Next follow-up in 2 months.",
+    summary: "Evaluated for speech delay, hyperactivity, and social communication concerns. The clinical impression indicates expressive speech delay and behavioral concerns, though physical and neurological examinations were otherwise normal. The recommended management includes speech, behavioral, and occupational therapies, multiple syrups (Vibrocar, IQNorm, and Autinorm) for two months, a child psychologist review, and a follow-up in two months.",
     driveLink: "https://drive.google.com/file/d/1fXEhzYjpb4MJj5D4937OUY4Joyn9I6x0/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+    documents: [
+      //{ label: "Goal setting discussion", driveLink: "https://..." },
+      //{ label: "Status report", driveLink: "https://..." },
+    ],
   },
   {
     date: "2026-06-11",
     category: "Therapy Assessment",
+    status: "Ongoing",        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: "Therapy Ongoing since June-2026. 3-hours a day (10am-1pm Mon-Fri)",    // the reason / short explanation - or null
     title: "Initial developmental assessment",
     doctor: "Ms Pema Doma",
     facility: "Early Autism Ventures, Kalyan Nagar, Bangalore",
-    summary: "Baseline assessment across speech, motor and social skills. Goals set for a 12-week block; speech therapy and OT recommended twice a week. Review assessment scheduled after the block.",
+    summary: "This is an autism assessment conducted using the VB-MAPP assessment, the evaluation tracked her current language, learning, and behavioral milestones. The results indicate that while she shows emerging strengths in spontaneous vocalizations, tracking, and independent play, she faces challenges with instruction following, matching, and social communication. To target these areas, the report outlines high-priority goals such as increasing compliance, eye contact, and functional communication. Ultimately, the clinical director recommends a structured ABA program alongside active parent training to generalize these skills at home.",
     driveLink: "https://drive.google.com/file/d/1AmYir4g6lrRt0iFuWK-ac_qotmzsJtnH/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+    documents: [
+     // { label: "Goal setting discussion", driveLink: "https://..." },
+     // { label: "Status report", driveLink: "https://..." },
+    ],
+  },
+  {
+    date: "2025-10-01",
+    category: "Therapy Assessment",
+    status: "Stopped",        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: "Therapy hapenned for 6 months (Oct-25 till Mar-26). Stopped it due to the main therapist left the center.",    // the reason / short explanation - or null
+    title: "Speech Therapy Consultation",
+    doctor: "Ms Rohana",
+    facility: "Cornerstone Therapy Solutions, HRBR Layout, Bangalore",
+    summary: "The first consultation for a 2-year-old child, Pranika Sharma, at Cornerstone Therapy Solutions. The primary concerns reported by her parents include delayed speech, an inability to speak in sentences, and experiencing meltdowns. The therapist recommends an occupational therapy consultation and speech therapy sessions three times a week.",
+    driveLink: "https://drive.google.com/file/d/1Lc2nGSImnby93JaHQUKXFimGb97fzxW6/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+    documents: [
+      { label: "Goal setting discussion", driveLink: "https://drive.google.com/file/d/1lfXb373slJei4mCQ87Z8HeOaRkgUXXVN/view?usp=drive_link" },
+      { label: "Speech Therapy Status report", driveLink: "https://drive.google.com/file/d/18xjUSOLg2DCHAM4-wwip_68ufXrrmMMU/view?usp=drive_link" },
+    ],
+  },
+  {
+    date: "2024-11-11",
+    category: "Neurology",
+    status: "Stopped",        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: "Stopped because Parents were unable to carry out therapy activities consistently and properly at home. They feel the need for involvement of a professional therapist.",    // the reason / short explanation - or null
+    title: "Pediatric neurologist",
+    doctor: "Dr. Sumeet Dhawan",
+    facility: "Apollo Clinic, Chandigarh",
+    summary: "Very first Consultation (Online). Diagnosed with suspected mild Autism Spectrum Disorder (ASD) accompanied by mild hyperactivity and delayed speech development. Doctor prescribed dietary supplements (L-Carnosine, DHA) and a medication for hyperactivity (Risperidone/Sizodon), alongside required specialized home and center-based therapies. Parents are highly recommended to take a 3-6 month to actively lead the therapies, stop all screen time, and implement strict dietary modifications.",
+    driveLink: "https://drive.google.com/file/d/1KFMk6innalosoZ3ViNJTV_FVd3w6JLNC/view?usp=drive_link",   // 👈 YOUR DRIVE LINK GOES HERE
+    documents: [
+      { label: "Session Recordings", driveLink: "https://drive.google.com/drive/folders/1QunrWrMDNyGhXLWR87ZuldlaL1qxvgIF?usp=drive_link" },
+      { label: "Session Notes", driveLink: "https://drive.google.com/file/d/1cOuEFyAaRkrxgvU3_tOZjKZeJCDDFqcD/view?usp=drive_link" },
+    ],
   },
   /*
   {
     date: "2026-03-18",
     category: "Doctor Visit",
+    status: null,        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: null,    // the reason / short explanation - or null
     title: "Fever & cough consultation",
     doctor: "Dr. Sample Name",
     facility: "Sample Hospital, Bengaluru",
@@ -576,6 +673,8 @@ const RECORDS = [
   {
     date: "2025-11-05",
     category: "Lab Report",
+    status: null,        // "Ongoing" | "Planned" | "On hold" | "Completed" | "Stopped" - or null
+    statusNote: null,    // the reason / short explanation - or null
     title: "CBC + Vitamin D blood test",
     doctor: "-",
     facility: "Sample Diagnostics",
@@ -608,6 +707,8 @@ const RECORDS = [
    ║      • therapistNotes / parentNotes: use \n for line breaks        ║
    ║      • driveLink: optional - add it to any entry to attach a       ║
    ║        daily report PDF from Drive                                 ║
+   ║      • documents: optional list of extra named buttons, in the     ║
+   ║        same format as STEP 2 records                               ║
    ║                                                                    ║
    ║   Any field set to null or "" is simply hidden on the page.        ║
    ║                                                                    ║
@@ -811,6 +912,18 @@ function lvClass(field, v){
           none:"lv-great", minimal:"lv-good", moderate:"lv-mid", "a lot":"lv-hard"}[s] || "b-other";
 }
 
+/* stClass("Ongoing") → "st-ongoing" - picks the colour for a record's
+   status tag. Understands a few synonyms too ("Undergoing", "Paused",
+   "Discontinued"...); any other wording gets a neutral grey tag. */
+function stClass(v){
+  const s = String(v || "").toLowerCase().replace(/[\s-]+/g, "");
+  return {ongoing:"st-ongoing", undergoing:"st-ongoing", active:"st-ongoing",
+          planned:"st-planned", upcoming:"st-planned", scheduled:"st-planned",
+          onhold:"st-onhold", paused:"st-onhold", onbreak:"st-onhold",
+          completed:"st-completed", done:"st-completed", finished:"st-completed",
+          stopped:"st-stopped", discontinued:"st-stopped"}[s] || "b-other";
+}
+
 /* The page's current "state": which tab is selected and what has been
    typed in each search box. Changing these + re-rendering = filtering. */
 const state    = { cat:"All", q:"" };   // medical history: selected tab + search text
@@ -834,6 +947,13 @@ function renderHeader(){
   // Turn each [label, value] pair into one ruled row of HTML
   $("#ruledRows").innerHTML = rows.map(([k,v]) =>
     `<div class="ruled-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+  // The "All documents" header button appears once CHILD.driveFolderLink
+  // holds a real link (it stays hidden while the placeholder is there).
+  if (!isPlaceholder(CHILD.driveFolderLink)){
+    const b = $("#driveFolderBtn");
+    b.href = CHILD.driveFolderLink;
+    b.style.display = "";
+  }
 }
 
 /* listOrNone(element, items, howToDrawOneItem, textWhenEmpty)
@@ -902,6 +1022,31 @@ function openPdf(i){ const r = RECORDS[i];      if (r) showDoc(r.title, r.driveL
 function openLog(i){ const l = THERAPY_LOGS[i]; if (l) showDoc("Daily report - " + fmtDate(l.date), l.driveLink); }
 function openTracker(){ showDoc(TRACKER.label || "Therapy Tracker", TRACKER.sheetLink, "Open in Google Sheets ↗"); }
 
+/* Open the j-th named document of record/session i (from its "documents" list) */
+function openRecDoc(i, j){
+  const r = RECORDS[i]; const d = r && r.documents ? r.documents[j] : null;
+  if (d) showDoc(d.label || "Document", d.driveLink);
+}
+function openLogDoc(i, j){
+  const l = THERAPY_LOGS[i]; const d = l && l.documents ? l.documents[j] : null;
+  if (d) showDoc(d.label || "Document", d.driveLink);
+}
+
+/* extraDocButtons(list, openerName, idx, small) - builds one button per
+   entry of an optional "documents" list, using each entry's label as the
+   button text. Links that Google can preview open in the popup; anything
+   else opens in a new tab. Placeholder/empty links are skipped. */
+function extraDocButtons(list, openerName, idx, small){
+  const cls = `btn btn-ghost${small ? " btn-sm" : ""}`;
+  return (list || []).map((d, j) => {
+    if (!d || isPlaceholder(d.driveLink)) return "";
+    const label = `📄 ${esc(d.label || "Document")}`;
+    return previewUrl(d.driveLink)
+      ? `<button class="${cls}" onclick="${openerName}(${idx}, ${j})">${label}</button>`
+      : `<a class="${cls}" href="${esc(d.driveLink)}" target="_blank" rel="noopener">${label} ↗</a>`;
+  }).join("");
+}
+
 /* closePdf() - hides the popup and empties the iframe */
 function closePdf(){
   $("#overlay").classList.remove("open");
@@ -945,7 +1090,8 @@ function visibleRecords(){
   const q = state.q.trim().toLowerCase();
   return RECORDS
     .filter(r => (state.cat === "All" || r.category === state.cat))
-    .filter(r => !q || [r.title, r.summary, r.doctor, r.facility, r.category, r.date]
+    .filter(r => !q || [r.title, r.summary, r.doctor, r.facility, r.category, r.date, r.status, r.statusNote,
+        (r.documents || []).map(d => d && d.label).join(" ")]
       .join(" ").toLowerCase().includes(q))
     .slice()                                        // copy, so sorting never reorders your data
     .sort((a,b) => String(b.date).localeCompare(String(a.date)));
@@ -956,13 +1102,14 @@ function visibleRecords(){
    - valid Drive link  → "View PDF" (popup) + "Open in Drive" (new tab)
    - other link        → only "Open in Drive" */
 function actionButtons(r, i){
+  const extra = extraDocButtons(r.documents, "openRecDoc", i, false);   // the optional named buttons
   if (isPlaceholder(r.driveLink))
-    return `<span class="nolink">No PDF linked yet - see "How to edit" below</span>`;
+    return extra || `<span class="nolink">No PDF linked yet - see "How to edit" below</span>`;
   const id = driveId(r.driveLink);
   const open = `<a class="btn btn-ghost" href="${esc(r.driveLink)}" target="_blank" rel="noopener">Open in Drive ↗</a>`;
-  return id
+  return (id
     ? `<button class="btn btn-primary" onclick="openPdf(${i})">📄 View PDF</button>${open}`
-    : open;
+    : open) + extra;
 }
 
 /* renderTimeline() - draws the medical-history list:
@@ -970,8 +1117,10 @@ function actionButtons(r, i){
    changes, and one card per visible record. */
 function renderTimeline(){
   const recs = visibleRecords();
+  // "N records on file", plus how many treatments are currently ongoing
+  const ongoing = RECORDS.filter(r => r.status && stClass(r.status) === "st-ongoing").length;
   $("#recCount").textContent = RECORDS.length
-    ? `${RECORDS.length} record${RECORDS.length>1?"s":""} on file` : "";
+    ? `${RECORDS.length} record${RECORDS.length>1?"s":""} on file${ongoing ? ` · ${ongoing} ongoing` : ""}` : "";
   if (!RECORDS.length){                              // no data at all yet
     $("#timeline").innerHTML = `<div class="empty"><b>No records yet.</b><br>
       Open this file in a text editor and add your first entry under <b>STEP 2</b> - see "How to edit" below.</div>`;
@@ -986,14 +1135,17 @@ function renderTimeline(){
     const year = String(r.date || "").slice(0,4) || "Undated";   // "2026-08-17" → "2026"
     if (year !== lastYear){ html += `<div class="yearhead">${esc(year)}</div>`; lastYear = year; }
     const idx = RECORDS.indexOf(r);                  // position in the original list (for the buttons)
+    const st = r.status ? stClass(r.status) : "";     // colour class for the optional status tag
     html += `<article class="rec">
       <div class="rec-top">
         <span class="badge ${CAT_CLASS[r.category] || "b-other"}">${esc(r.category || "Other")}</span>
         <span class="rec-date">${fmtDate(r.date)}</span>
+        ${r.status ? `<span class="badge ${st}">${st === "st-ongoing" ? "● " : ""}${esc(r.status)}</span>` : ""}
       </div>
       <h3>${esc(r.title)}</h3>
       <p class="by">${esc([r.doctor, r.facility].filter(x => x && x !== "-").join(" · "))}</p>
       <p class="sum">${esc(r.summary)}</p>
+      ${r.statusNote ? `<p class="stnote ${st}"><b>${esc(r.status || "Status")}:</b> ${esc(r.statusNote)}</p>` : ""}
       <div class="rec-actions">${actionButtons(r, idx)}</div>
     </article>`;
   });
@@ -1042,7 +1194,8 @@ function visibleLogs(){
   return THERAPY_LOGS
     .filter(l => !q || [l.date, l.therapyType, l.mood, l.promptingNeeded, l.challengingBehaviour,
         l.foodSnack, l.water, l.bathroom, l.otherActivities, l.therapistNotes, l.parentNotes,
-        l.mainSkillsWorkedOn, l.instructionsFollowed, l.communicationWordsUsed]
+        l.mainSkillsWorkedOn, l.instructionsFollowed, l.communicationWordsUsed,
+        (l.documents || []).map(d => d && d.label).join(" ")]
       .map(asText).join(" ").toLowerCase().includes(q))
     .slice()
     .sort((a,b) => String(b.date).localeCompare(String(a.date)));
@@ -1086,11 +1239,13 @@ function basicsLine(l){
 /* logButtons(session, index) - the optional "Daily report" buttons.
    Only shown when a session has a real driveLink. */
 function logButtons(l, i){
-  if (isPlaceholder(l.driveLink)) return "";
+  const extra = extraDocButtons(l.documents, "openLogDoc", i, true);    // the optional named buttons
+  if (isPlaceholder(l.driveLink))
+    return extra ? `<div class="log-actions">${extra}</div>` : "";
   const pv = previewUrl(l.driveLink);
   const open = `<a class="btn btn-ghost btn-sm" href="${esc(l.driveLink)}" target="_blank" rel="noopener">Open in Drive ↗</a>`;
   const view = pv ? `<button class="btn btn-primary btn-sm" onclick="openLog(${i})">📄 Daily report</button>` : "";
-  return `<div class="log-actions">${view}${open}</div>`;
+  return `<div class="log-actions">${view}${open}${extra}</div>`;
 }
 
 /* renderLogs() - draws the sessions list:

@@ -28,7 +28,7 @@ installation and no build step. Your data stays inside the file, on your own dev
 |---|---|
 | **Patient header** | Name, date of birth with the age calculated automatically, blood group, latest height/weight. Also the **Print summary** button - a clean printout to carry to doctor visits. |
 | **Info cards** | Ongoing conditions, current medications, and the care team (pediatrician, neurologist, therapy centre) plus emergency contacts with tap-to-call numbers. |
-| **Medical history** | One card per record, grouped by year, with tabs per category (tabs appear only for categories that have entries), a search box, and **View PDF** / **Open in Drive** buttons. |
+| **Medical history** | One card per record, grouped by year, with tabs per category (tabs appear only for categories that have entries), a search box, **View PDF** / **Open in Drive** buttons, and an optional colour-coded **status** tag (Ongoing / Planned / On hold / Completed / Stopped) with a **status note** explaining the why. The header line also counts how many treatments are currently ongoing. |
 | **Daily therapy sessions** | The green **Therapy Tracker** bar (quick-view popup + open the Google Sheet), then one card per session with mood/prompting chips, skills, instructions, words used, basics (food/water/bathroom) and therapist/parent notes, grouped by month. |
 | **How to edit** | A collapsible on-page copy of the editing instructions. |
 
@@ -53,8 +53,14 @@ paste it below, and edit the values. Fields:
 |---|---|
 | `date` | `"YYYY-MM-DD"` |
 | `category` | One of: `Vaccination`, `Doctor Visit`, `Neurology`, `Therapy Assessment`, `Lab Report`, `Prescription`, `Hospitalization`, `Other` |
+| `status` | Optional: `"Ongoing"`, `"Planned"`, `"On hold"`, `"Completed"` or `"Stopped"` - shown as a colour-coded tag next to the date (Ongoing gets a green ● dot). A few synonyms also work, e.g. `"Undergoing"`, `"Paused"`, `"Discontinued"`. |
+| `statusNote` | Optional: the reason / short story behind the status - e.g. why a therapy was stopped, or why it didn't work well. Shown under the summary with a border matching the status colour. |
 | `title`, `doctor`, `facility`, `summary` | Free text |
 | `driveLink` | The record's PDF in Google Drive: right-click the file in Drive → **Share** → **Copy link** → paste it here (keep the quotes) |
+
+`status` and `statusNote` follow the same rule as everything else: set them to
+`null` on records that don't need them (vaccinations, one-off lab reports...)
+and they simply won't appear.
 
 ### STEP 3 - `TRACKER` + `THERAPY_LOGS` (therapy)
 - **`TRACKER.sheetLink`** - the Therapy Tracker Google Sheet link
@@ -79,7 +85,7 @@ paste it below, and edit the values. Fields:
 | `therapistNotes`, `parentNotes` | text (`\n` = line break) | Bordered note blocks |
 | `driveLink` | optional Drive link | "Daily report" button |
 
-**Two rules worth remembering:**
+**Two rules worth remembering (they apply to records too):**
 - A `["list", "of", "items"]` renders as chips; a plain `"sentence"` renders as text.
   Both are fine, per field, per entry.
 - `null` or `""` means *not recorded* - the field simply doesn't appear. Nothing
@@ -101,12 +107,12 @@ The file has three layers, top to bottom:
    - **Your data**: the `CHILD`, `RECORDS`, `TRACKER` and `THERAPY_LOGS`
      constants (the STEP blocks).
    - **Rendering code**: small helper functions (date formatting, age
-     calculation, extracting the file ID from a Google link, HTML-escaping)
-     plus one `render...()` function per page section. Each render function
-     reads the data, builds HTML text from it, and injects it with
-     `.innerHTML`. On page load everything renders once; typing in a search
-     box or clicking a tab updates a small `state` object and re-runs the
-     relevant render function.
+     calculation, extracting the file ID from a Google link, HTML-escaping,
+     picking tag colours for categories and statuses) plus one `render...()`
+     function per page section. Each render function reads the data, builds
+     HTML text from it, and injects it with `.innerHTML`. On page load
+     everything renders once; typing in a search box or clicking a tab
+     updates a small `state` object and re-runs the relevant render function.
 
 The document popup works by converting any normal Google share link into
 Google's read-only `/preview` address (for Drive files, Sheets, Docs and
@@ -127,6 +133,7 @@ HTML, so quotes, `<`, `&` etc. in notes can't break the page.
 | "No PDF linked yet" on a record | That record's `driveLink` still contains the `PASTE_...` placeholder. |
 | Tracker bar shows a hint instead of buttons | `TRACKER.sheetLink` still contains the placeholder. |
 | A tab is missing | Tabs appear only for categories that have at least one record. |
+| A status tag shows in grey | The status wording isn't one of the five known values (or a synonym) - it still displays, just without a specific colour. |
 
 ---
 
